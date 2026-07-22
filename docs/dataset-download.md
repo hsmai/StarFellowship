@@ -1,5 +1,26 @@
 # 데이터셋 다운로드 현황 (2026-07-22 시작)
 
+## 현재 상태 (2026-07-22 20:17 기준)
+
+**G1 Brainco 컬렉션 8개 전부 완료** (19:31~20:15, 44분, 합계 57.3GB)
+
+| 데이터셋 | 용량 | 완료 시각 |
+|---|---|---|
+| G1_Brainco_GraspOreo | 8.4G | 19:37 |
+| G1_Brainco_GraspRubiksCube | 7.8G | 19:43 |
+| G1_Brainco_PickApple | 4.7G | 19:46 |
+| G1_Brainco_PickCharger | 6.7G | 19:51 |
+| G1_Brainco_PickDoll | 11G | 19:59 |
+| G1_Brainco_PickDrink | 6.0G | 20:05 |
+| G1_Brainco_PickTissues | 6.1G | 20:12 |
+| G1_Brainco_PickToothpaste | 6.6G | 20:15 |
+
+**Humanoid Everyday (935GB)**: 20:15 자동 시작, 진행 중. 약 25MB/s 기준 **2026-07-23 오전 6~7시 완료 예상**.
+
+디스크: `/data2` 여유 2.5T (84% 사용).
+
+> 구조 분석은 두 링크 전체 다운로드 완료 후 일괄 수행 예정 (2026-07-23 오후 보고 목표).
+
 ## 다운로드 위치
 
 - **서버**: 연구실 서버 `pleiades1` (`ssh -p 3022 isangmin@10.20.23.30`)
