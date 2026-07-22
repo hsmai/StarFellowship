@@ -18,7 +18,7 @@
 ## 문서
 
 - [데이터셋 다운로드 현황 및 확인 방법](docs/dataset-download.md)
-- [데이터셋 구조 분석](docs/dataset-structure.md)
+- 데이터셋 구조 분석 (링크 단위 다운로드 완료 후 전체 분석 예정)
 
 ## 진행상황 빠른 확인
 
