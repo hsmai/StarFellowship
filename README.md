@@ -12,13 +12,13 @@
 
 | 데이터셋 | 포맷 | 크기 | 상태 |
 |---|---|---|---|
-| [UniFoLM G1 Brainco 컬렉션](https://huggingface.co/collections/unitreerobotics/unifolm-g1-brainco-dataset) (8개) | LeRobot v3.0 | 데이터셋당 ~12GB | 다운로드 중 (1/8 완료) |
-| [Humanoid Everyday](https://huggingface.co/datasets/USC-PSI-Lab/humanoid-everyday) | LeRobot v2.0 | 935GB | 대기 (최후순위) |
+| [UniFoLM G1 Brainco 컬렉션](https://huggingface.co/collections/unitreerobotics/unifolm-g1-brainco-dataset) (8개) | LeRobot v3.0 | 57.3GB | ✅ 다운로드·분석 완료 |
+| [Humanoid Everyday](https://huggingface.co/datasets/USC-PSI-Lab/humanoid-everyday) | LeRobot v2.1 | 872GB | ✅ 다운로드·분석 완료 |
 
 ## 문서
 
 - [데이터셋 다운로드 현황 및 확인 방법](docs/dataset-download.md)
-- 데이터셋 구조 분석 (링크 단위 다운로드 완료 후 전체 분석 예정)
+- [데이터셋 구조 분석 (전체 실측)](docs/dataset-structure.md)
 
 ## 진행상황 빠른 확인
 
