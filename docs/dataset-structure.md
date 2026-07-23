@@ -125,9 +125,9 @@ humanoid-everyday/
 │   ├── info.json              # 스펙 (feature 정의, 총계, 경로 규칙)
 │   ├── tasks.jsonl            # 246개 태스크: task_index, task(카테고리/이름), category, description
 │   ├── episodes.jsonl         # 8,949행: episode_index, tasks, length, robot_type, instruction(자연어)
-│   ├── episodes_stats.jsonl   # 에피소드별 feature 통계
-│   ├── errors.jsonl           # 제외된 에피소드 기록 (3건: 27, 640, 6702 — zero valid frames)
-│   └── stats.json             # 전체 통계
+│   ├── episodes_stats.jsonl   # 에피소드별 통계 — ★ 8,949행 모두 stats 내용이 비어 있음
+│   ├── errors.jsonl           # 제외된 에피소드 5건 (27, 640, 6702, 6708, 7027 — zero valid frames)
+│   └── stats.json             # 전체 통계 — ★ 빈 파일(2바이트)
 ├── data/chunk-000 ~ chunk-008/
 │   └── episode_000000.parquet ...   # ★ 에피소드당 1파일 (총 8,949개)
 ├── videos/chunk-000 ~ chunk-008/
@@ -149,11 +149,15 @@ humanoid-everyday/
 | observation.hand_joints | float32 [가변] | 손 관절 — **G1: 14, H1: 12** |
 | observation.tactile.sensor_id | int64 [가변] | 촉각 센서 ID — **G1: 18개, H1: 0개(H1엔 촉각 없음)** |
 | observation.tactile.values | float32 [센서수,4] | 촉각 값 (센서당 4채널) |
-| action | float32 [가변] | 액션 — **G1: 28, H1: 26** |
+| action | float32 [가변] | **G1: 28 (손14+팔14), H1: 26 (손12+팔14)** — 순서가 **손 → 팔**이며 다리는 미포함 (실측 확인) |
 | timestamp / frame_index / episode_index / index / task_index | 스칼라 | 인덱싱 |
 | next.done | bool | 에피소드 종료 플래그 |
 
 **⚠️ 로봇별 가변 차원**: leg/hand/tactile/action 차원이 G1과 H1이 다름 → 학습에 쓸 때 robot_type별 분리 또는 패딩 필요.
+
+**⚠️ G1/H1은 공통 태스크가 0개** — G1 124종, H1 122종으로 완전히 분리되어 있어 사실상 별개 데이터셋에 가까움.
+
+**⚠️ 실제 파일 8,954개 중 5개는 미등록**(errors.jsonl) → 에피소드 목록은 반드시 `episodes.jsonl` 기준으로 생성할 것.
 
 ## 태스크 구성 (246개, 7 카테고리)
 
