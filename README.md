@@ -20,7 +20,7 @@
 - [데이터셋 다운로드 현황 및 확인 방법](docs/dataset-download.md)
 - [데이터셋 구조 분석 (전체 실측)](docs/dataset-structure.md)
 - [📄 보고서 (Word)](docs/휴머노이드_데이터셋_구조분석_보고서.docx) — 샘플 이미지 10장 포함 ([docs/assets/](docs/assets/))
-- [🎬 에피소드 샘플 영상](docs/samples/) — GraspOreo 5번 에피소드 (4카메라 그리드 + 카메라별 개별 클립)
+- [🎬 에피소드 샘플 영상](docs/samples/) — Brainco GraspOreo 5번(4카메라 그리드 + 개별 클립), Humanoid Everyday 3800번(RGB+depth+LiDAR 3분할)
 
 ## 진행상황 빠른 확인
 

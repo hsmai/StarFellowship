@@ -172,12 +172,14 @@ humanoid-everyday/
 | Precision | 8 | 320 | 정밀 조작 |
 
 - `tasks.jsonl`의 각 태스크에 **문장 단위 상세 description** 포함 (예: "the robot uses its right hand to hold the eraser ... wipe the desk by swiping its surface twice")
-- `episodes.jsonl`의 에피소드마다 **자연어 instruction**이 별도로 붙어 있음 (VLA 학습용 language conditioning에 바로 사용 가능)
+- ⚠️ `episodes.jsonl`의 `instruction` 필드는 **8,949개 에피소드가 전부 동일한 한 문장**으로 채워져 있음 (데이터 오류) → 언어 라벨은 `task_index`로 `tasks.jsonl`을 조회해 사용할 것
+- 246개 태스크 중 1개(`HRI/pick_up_a_bottle_and_hand_it_g1`)는 description이 비어 있음
+- 태스크당 에피소드 수: 최소 2개 ~ 최대 80개 (평균 36.4)
 
 ## 포함된 것 / 없는 것
 
-**있음**: 에고센트릭 RGB + **depth** + **LiDAR** + IMU + 오도메트리 + 전신 관절(팔/다리/손) + **촉각(G1만)** + 자연어 instruction + 태스크 카테고리 + 에피소드별 robot_type + done 플래그
-**없음**: 멀티뷰 카메라(에고센트릭 1시점뿐), 객체 pose/세그멘테이션 GT, 카메라 intrinsics(README/메타에 미포함 — 데이터로더 레포 확인 필요), 성공/실패 라벨
+**있음**: 에고센트릭 RGB + **depth** + **LiDAR** + IMU + 오도메트리 + 전신 관절(팔/다리/손) + **촉각(G1만)** + 태스크 이름·설명(246종) + 카테고리 + 에피소드별 robot_type + done 플래그
+**없음**: 멀티뷰 카메라(에고센트릭 1시점뿐), 객체 pose/세그멘테이션 GT, 카메라 intrinsics(README/메타에 미포함 — 데이터로더 레포 확인 필요), 성공/실패 라벨, **정규화 통계**(파일은 있으나 비어 있음), **에피소드별 지시문**(값이 전부 동일)
 
 ## 로딩
 
