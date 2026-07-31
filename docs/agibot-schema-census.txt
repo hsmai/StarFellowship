@@ -1,0 +1,122 @@
+태스크 수: 37
+[ 1/37] ImitationLearning/CommercialSpaces/task_3400            컬럼 7개
+[ 2/37] ImitationLearning/CommercialSpaces/task_3401            컬럼 7개
+[ 3/37] ImitationLearning/CommercialSpaces/task_3402            컬럼 7개
+[ 4/37] ImitationLearning/CommercialSpaces/task_3404            컬럼 7개
+[ 5/37] ImitationLearning/CommercialSpaces/task_3405            컬럼 7개
+[ 6/37] ImitationLearning/CommercialSpaces/task_3477            컬럼 7개
+[ 7/37] ImitationLearning/CommercialSpaces/task_3641            컬럼 7개
+[ 8/37] ImitationLearning/CommercialSpaces/task_3705            컬럼 7개
+[ 9/37] ImitationLearning/CommercialSpaces/task_3777            컬럼 7개
+[10/37] ImitationLearning/CommercialSpaces/task_4053            컬럼 7개
+[11/37] ImitationLearning/CommercialSpaces/task_4542            컬럼 7개
+[12/37] ImitationLearning/CommercialSpaces/task_4799            컬럼 7개
+[13/37] ImitationLearning/Home/task_4713                        컬럼 7개
+[14/37] ReinforcementLearning/Home/task_12173                   컬럼 7개
+[15/37] ReinforcementLearning/Home/task_12190                   컬럼 7개
+[16/37] ReinforcementLearning/Home/task_12192                   컬럼 7개
+[17/37] ReinforcementLearning/Home/task_12197                   컬럼 7개
+[18/37] ReinforcementLearning/Home/task_12208                   컬럼 7개
+[19/37] ReinforcementLearning/Home/task_12228                   컬럼 7개
+[20/37] ReinforcementLearning/Industry/task_6671                컬럼 7개
+[21/37] ReinforcementLearning/Industry/task_6673                컬럼 7개
+[22/37] ReinforcementLearning/Industry/task_6674                컬럼 7개
+[23/37] ReinforcementLearning/Industry/task_6687                컬럼 7개
+[24/37] ReinforcementLearning/Industry/task_6688                컬럼 7개
+[25/37] ReinforcementLearning/Industry/task_6767                컬럼 7개
+[26/37] ReinforcementLearning/Industry/task_6809                컬럼 7개
+[27/37] ReinforcementLearning/Industry/task_7093                컬럼 7개
+[28/37] RichInteraction/CommercialSpaces/task_4158              컬럼 7개
+[29/37] RichInteraction/CommercialSpaces/task_4182              컬럼 7개
+[30/37] RichInteraction/CommercialSpaces/task_4439              컬럼 7개
+[31/37] RichInteraction/CommercialSpaces/task_4603              컬럼 7개
+[32/37] RichInteraction/CommercialSpaces/task_4952              컬럼 7개
+[33/37] RichInteraction/CommercialSpaces/task_4962              컬럼 7개
+[34/37] RichInteraction/Home/task_4224                          컬럼 7개
+[35/37] RichInteraction/Home/task_4231                          컬럼 7개
+[36/37] RichInteraction/Home/task_4560                          컬럼 7개
+[37/37] RichInteraction/Home/task_5015                          컬럼 7개
+
+=== 결과: 고유 스키마 5종 ===
+
+--- 스키마 (컬럼 7개) — 태스크 2개 ---
+    ImitationLearning/CommercialSpaces/task_3400
+    ImitationLearning/CommercialSpaces/task_3401
+      observation.state                             fixed_size_list<element: float>[162]
+      action                                        fixed_size_list<element: float>[40]
+      episode_index                                 int64
+      frame_index                                   int64
+      index                                         int64
+      task_index                                    int64
+      timestamp                                     float
+
+--- 스키마 (컬럼 7개) — 태스크 8개 ---
+    ImitationLearning/CommercialSpaces/task_3402
+    ImitationLearning/CommercialSpaces/task_3404
+    ImitationLearning/CommercialSpaces/task_3405
+    ImitationLearning/CommercialSpaces/task_3477
+    ImitationLearning/CommercialSpaces/task_3641
+    ImitationLearning/CommercialSpaces/task_3705
+    ImitationLearning/CommercialSpaces/task_3777
+    ImitationLearning/CommercialSpaces/task_4053
+      observation.state                             fixed_size_list<element: float>[169]
+      action                                        fixed_size_list<element: float>[40]
+      episode_index                                 int64
+      frame_index                                   int64
+      index                                         int64
+      task_index                                    int64
+      timestamp                                     float
+
+--- 스키마 (컬럼 7개) — 태스크 8개 ---
+    ImitationLearning/CommercialSpaces/task_4542
+    ImitationLearning/CommercialSpaces/task_4799
+    ImitationLearning/Home/task_4713
+    RichInteraction/CommercialSpaces/task_4603
+    RichInteraction/CommercialSpaces/task_4952
+    RichInteraction/CommercialSpaces/task_4962
+    RichInteraction/Home/task_4560
+    RichInteraction/Home/task_5015
+      observation.state                             fixed_size_list<element: float>[193]
+      action                                        fixed_size_list<element: float>[44]
+      episode_index                                 int64
+      frame_index                                   int64
+      index                                         int64
+      task_index                                    int64
+      timestamp                                     float
+
+--- 스키마 (컬럼 7개) — 태스크 14개 ---
+    ReinforcementLearning/Home/task_12173
+    ReinforcementLearning/Home/task_12190
+    ReinforcementLearning/Home/task_12192
+    ReinforcementLearning/Home/task_12197
+    ReinforcementLearning/Home/task_12208
+    ReinforcementLearning/Home/task_12228
+    ReinforcementLearning/Industry/task_6671
+    ReinforcementLearning/Industry/task_6673
+    ReinforcementLearning/Industry/task_6674
+    ReinforcementLearning/Industry/task_6687
+    ReinforcementLearning/Industry/task_6688
+    ReinforcementLearning/Industry/task_6767
+    ReinforcementLearning/Industry/task_6809
+    ReinforcementLearning/Industry/task_7093
+      observation.state                             fixed_size_list<element: float>[216]
+      action                                        fixed_size_list<element: float>[44]
+      episode_index                                 int64
+      frame_index                                   int64
+      index                                         int64
+      task_index                                    int64
+      timestamp                                     float
+
+--- 스키마 (컬럼 7개) — 태스크 5개 ---
+    RichInteraction/CommercialSpaces/task_4158
+    RichInteraction/CommercialSpaces/task_4182
+    RichInteraction/CommercialSpaces/task_4439
+    RichInteraction/Home/task_4224
+    RichInteraction/Home/task_4231
+      observation.state                             fixed_size_list<element: float>[169]
+      action                                        fixed_size_list<element: float>[44]
+      episode_index                                 int64
+      frame_index                                   int64
+      index                                         int64
+      task_index                                    int64
+      timestamp                                     float
