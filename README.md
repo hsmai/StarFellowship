@@ -14,8 +14,8 @@
 |---|---|---|---|
 | [UniFoLM G1 Brainco 컬렉션](https://huggingface.co/collections/unitreerobotics/unifolm-g1-brainco-dataset) (8개) | LeRobot v3.0 | 57.3GB | ✅ 다운로드·분석 완료 |
 | [Humanoid Everyday](https://huggingface.co/datasets/USC-PSI-Lab/humanoid-everyday) | LeRobot v2.1 | 872GB | ✅ 다운로드·분석 완료 |
-| [AgiBot World 2026](https://huggingface.co/datasets/agibot-world/AgiBotWorld2026) 샘플 | LeRobot v2.1 | ~9.6GB | ⏳ 다운로드 중 |
-| [EgoDex](https://github.com/apple/ml-egodex) 테스트셋 | mp4+hdf5 | 16GB | ⏳ 다운로드 중 |
+| [AgiBot World 2026](https://huggingface.co/datasets/agibot-world/AgiBotWorld2026) 샘플 | LeRobot v2.1 | 84GB(해제 포함 165GB) | ✅ 다운로드 완료 (6/6 조합·스키마 5종 커버) |
+| [EgoDex](https://github.com/apple/ml-egodex) 테스트셋 | mp4+hdf5 | 16GB(해제 포함 35GB) | ✅ 다운로드 완료 |
 
 ## 진행 중 Task
 
