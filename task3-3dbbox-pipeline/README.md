@@ -16,7 +16,7 @@
 
 ## 진행 상태
 
-- [ ] STEP 0 — RoboBrain 2.0/2.5 Technical Report 파이프라인 파악 → [docs/step0-robobrain-pipeline.md](docs/step0-robobrain-pipeline.md)
+- [x] STEP 0 — RoboBrain 2.0/2.5 리포트 파이프라인 파악 완료 (8/2) → [docs/step0-robobrain-pipeline.md](docs/step0-robobrain-pipeline.md)
 - [ ] STEP 0.5 — GPU 불필요 준비 (대상 선정·프레임 추출·코드 골격)
 - [ ] STEP 1 — 환경 구축 + 모델 4종 스모크 테스트 (GPU 승인 대기)
 - [ ] STEP 2 — 프레임 1장 관통
