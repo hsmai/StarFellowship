@@ -15,7 +15,7 @@
 | Task 0 (7월) | Brainco 8종 + Humanoid Everyday 다운로드·EDA | [docs/](docs/) | ✅ 완료 |
 | Task 1 | AgiBot World 2026 샘플 다운로드·EDA | [docs/AgiBot_EDA.docx](docs/AgiBot_EDA.docx) | ✅ 완료 |
 | Task 2 | EgoDex 테스트셋 다운로드·EDA | [docs/EgoDex_EDA_보고서.docx](docs/EgoDex_EDA_보고서.docx) | ✅ 완료 |
-| **Task 3** | **G1 데이터 3D BBox 추출 파이프라인** | [task3-3dbbox-pipeline/](task3-3dbbox-pipeline/) | 🔄 진행 중 |
+| **Task 3** | **G1 데이터 3D BBox 추출 파이프라인** | [task3-3dbbox-pipeline/](task3-3dbbox-pipeline/) | ✅ 완료 (8/2) |
 
 ## 대상 데이터셋
 
