@@ -1,0 +1,173 @@
+"""
+Task 3 파이프라인 4~5단계: Back-projection + 3D Bounding Box
+GPU 불필요 (CPU only). GroundingDINO/SAM/UniDepth 결과가 없어도
+실측 depth + 임의 마스크로 단독 검증 가능.
+
+RoboBrain(RefSpatial) 파이프라인 기준:
+  4단계 Back-projection : 마스크 + depth + intrinsics -> 객체별 point cloud
+  5단계 3D Bounding Box : point cloud -> axis-aligned 3D box
+"""
+from dataclasses import dataclass
+from typing import Optional, Tuple
+import numpy as np
+
+
+# ---------------------------------------------------------------- intrinsics
+@dataclass
+class Intrinsics:
+    """카메라 내부 파라미터. fx,fy=초점거리(px), cx,cy=주점(px)"""
+    fx: float
+    fy: float
+    cx: float
+    cy: float
+
+    @classmethod
+    def from_fov(cls, width: int, height: int, hfov_deg: float = 60.0) -> "Intrinsics":
+        """intrinsics가 없을 때 수평 FOV 가정으로 근사.
+        WildCamera 추정치가 들어오기 전 임시 대체용 (STEP 0.5 검증에 사용)."""
+        fx = (width / 2.0) / np.tan(np.deg2rad(hfov_deg) / 2.0)
+        return cls(fx=fx, fy=fx, cx=width / 2.0, cy=height / 2.0)
+
+    def as_matrix(self) -> np.ndarray:
+        return np.array([[self.fx, 0, self.cx],
+                         [0, self.fy, self.cy],
+                         [0, 0, 1]], dtype=np.float64)
+
+
+# ------------------------------------------------------- 4단계 back-projection
+def backproject(
+    depth: np.ndarray,              # (H,W) 거리값. 단위는 depth_scale로 m 변환
+    K: Intrinsics,
+    mask: Optional[np.ndarray] = None,   # (H,W) bool. None이면 전체 화면
+    depth_scale: float = 1e-3,      # mm -> m (HE/AgiBot 실측 depth 기준)
+    valid_range: Tuple[float, float] = (0.05, 10.0),   # m. 이 밖은 버림
+) -> np.ndarray:
+    """마스크 영역의 픽셀을 카메라 좌표계 3D 점군으로 복원한다.
+
+    핀홀 모델:  X = (u - cx) * Z / fx,   Y = (v - cy) * Z / fy,   Z = depth
+    반환: (N,3) float64,  카메라 좌표계 (x=우, y=하, z=전방), 단위 m
+    """
+    H, W = depth.shape
+    z = depth.astype(np.float64) * depth_scale
+
+    valid = np.isfinite(z) & (z > valid_range[0]) & (z < valid_range[1])
+    if mask is not None:
+        valid &= mask.astype(bool)
+    if not valid.any():
+        return np.empty((0, 3), dtype=np.float64)
+
+    v, u = np.nonzero(valid)
+    zz = z[v, u]
+    x = (u - K.cx) * zz / K.fx
+    y = (v - K.cy) * zz / K.fy
+    return np.stack([x, y, zz], axis=1)
+
+
+# ------------------------------------------------------------ 점군 정제
+def filter_points(
+    pts: np.ndarray,
+    percentile: Tuple[float, float] = (5.0, 95.0),   # depth 이상치 클리핑
+    nb_neighbors: int = 20,
+    std_ratio: float = 2.0,
+    use_statistical: bool = True,
+    foreground_mad: Optional[float] = 3.0,   # None이면 비활성. depth 주 모드만 취함
+) -> np.ndarray:
+    """RoboBrain 리포트에 세부가 없어 표준 관행으로 구현한 정제 단계.
+    ⓪ foreground 분리 : depth 중앙값 ± k·MAD 밖(=배경 혼입) 제거   ← 실측으로 필요성 확인
+    ① depth percentile 클리핑 → 경계 튐 제거
+    ② statistical outlier removal → 산발 노이즈 제거 (scipy, open3d 불필요)
+
+    ⓪이 필요한 이유(STEP 0.5 실측): 마스크가 정확해도 RGB-depth 정렬 오차·
+    경계 픽셀 때문에 배경 거리값이 섞이며, 이때 z 범위가 실제 물체의 5배까지 부풀었다.
+    """
+    if len(pts) == 0:
+        return pts
+
+    if foreground_mad is not None and len(pts) > 50:
+        z = pts[:, 2]
+        med = np.median(z)
+        mad = np.median(np.abs(z - med)) * 1.4826      # 표준편차 환산
+        if mad > 1e-6:
+            pts = pts[np.abs(z - med) <= foreground_mad * mad]
+        if len(pts) == 0:
+            return pts
+
+    lo, hi = np.percentile(pts[:, 2], percentile)
+    pts = pts[(pts[:, 2] >= lo) & (pts[:, 2] <= hi)]
+    if len(pts) < nb_neighbors + 1 or not use_statistical:
+        return pts
+
+    from scipy.spatial import cKDTree
+    tree = cKDTree(pts)
+    d, _ = tree.query(pts, k=nb_neighbors + 1)      # 자기 자신 포함
+    mean_d = d[:, 1:].mean(axis=1)
+    thr = mean_d.mean() + std_ratio * mean_d.std()
+    return pts[mean_d <= thr]
+
+
+def align_mask_to_depth(mask: np.ndarray, dx: int = 0, dy: int = 0) -> np.ndarray:
+    """RGB 기준 마스크를 depth 좌표계로 평행이동 보정.
+    HE 데이터 실측 결과 depth가 RGB 대비 약 dx=-20px 어긋나 있어 필요.
+    (원 파이프라인에는 없는 단계 — 우리 데이터 특성상 추가)"""
+    if dx == 0 and dy == 0:
+        return mask
+    return np.roll(np.roll(mask, dy, axis=0), dx, axis=1)
+
+
+# ------------------------------------------------------------- 5단계 3D box
+@dataclass
+class Box3D:
+    """axis-aligned 3D bounding box (카메라 좌표계, 단위 m)"""
+    center: np.ndarray   # (3,)
+    size: np.ndarray     # (3,) = (width_x, height_y, depth_z)
+    min_xyz: np.ndarray
+    max_xyz: np.ndarray
+    n_points: int
+
+    def corners(self) -> np.ndarray:
+        """(8,3) 코너 좌표. 2D 재투영 시각화에 사용"""
+        x0, y0, z0 = self.min_xyz
+        x1, y1, z1 = self.max_xyz
+        return np.array([[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
+                         [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]])
+
+    def summary(self) -> str:
+        c, s = self.center, self.size
+        return (f"center=({c[0]:+.3f}, {c[1]:+.3f}, {c[2]:+.3f})m  "
+                f"size=({s[0]:.3f} x {s[1]:.3f} x {s[2]:.3f})m  pts={self.n_points}")
+
+
+def fit_box3d(pts: np.ndarray) -> Optional[Box3D]:
+    """정제된 점군에서 axis-aligned 3D box 산출 (리포트 명시 방식)."""
+    if len(pts) < 10:
+        return None
+    mn, mx = pts.min(axis=0), pts.max(axis=0)
+    return Box3D(center=(mn + mx) / 2.0, size=mx - mn,
+                 min_xyz=mn, max_xyz=mx, n_points=len(pts))
+
+
+# --------------------------------------------------------- 3D -> 2D 재투영
+def project_points(pts: np.ndarray, K: Intrinsics) -> np.ndarray:
+    """3D 점을 이미지 평면으로 투영. 반환 (N,2) 픽셀 좌표."""
+    z = np.clip(pts[:, 2], 1e-6, None)
+    u = pts[:, 0] * K.fx / z + K.cx
+    v = pts[:, 1] * K.fy / z + K.cy
+    return np.stack([u, v], axis=1)
+
+
+BOX_EDGES = [(0, 1), (1, 2), (2, 3), (3, 0),      # 앞면
+             (4, 5), (5, 6), (6, 7), (7, 4),      # 뒷면
+             (0, 4), (1, 5), (2, 6), (3, 7)]      # 연결
+
+
+def draw_box3d(img, box: Box3D, K: Intrinsics, color=(0, 165, 255), thickness=2, label=None):
+    """3D 박스를 원본 이미지 위에 재투영해 그린다 (OpenCV BGR in-place)."""
+    import cv2
+    pts2d = project_points(box.corners(), K).astype(int)
+    for a, b in BOX_EDGES:
+        cv2.line(img, tuple(pts2d[a]), tuple(pts2d[b]), color, thickness, cv2.LINE_AA)
+    if label:
+        x, y = pts2d[:, 0].min(), pts2d[:, 1].min()
+        cv2.putText(img, label, (int(x), max(18, int(y) - 8)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA)
+    return img

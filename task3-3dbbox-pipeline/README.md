@@ -17,8 +17,10 @@
 ## 진행 상태
 
 - [x] STEP 0 — RoboBrain 2.0/2.5 리포트 파이프라인 파악 완료 (8/2) → [docs/step0-robobrain-pipeline.md](docs/step0-robobrain-pipeline.md)
-- [ ] STEP 0.5 — GPU 불필요 준비 (대상 선정·프레임 추출·코드 골격)
-- [ ] STEP 1 — 환경 구축 + 모델 4종 스모크 테스트 (GPU 승인 대기)
+- [x] STEP 0.5 — **GPU 불필요 구간 완료 (8/2)** → [docs/step05-cpu-verification.md](docs/step05-cpu-verification.md)
+  - 4~5단계(역투영·3D박스) 구현 및 실측 depth로 검증 완료 → `pipeline/geometry.py`
+  - 발견: RGB-depth 20px 정렬 오차 / percentile만으로는 박스가 5배 부풀어 모드 기반 전경분리 필수
+- [ ] STEP 1 — 환경 구축 + 모델 4종 스모크 테스트 (GPU 승인 대기) — 설치 스크립트 준비됨 `pipeline/setup_env.sh`
 - [ ] STEP 2 — 프레임 1장 관통
 - [ ] STEP 3 — Brainco 에피소드 1개 → 시각화
 - [ ] STEP 4 — HE 에피소드 1개 + depth 정확도 검증
