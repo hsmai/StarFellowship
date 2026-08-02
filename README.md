@@ -27,7 +27,8 @@
 - [데이터셋 구조 분석 (전체 실측)](docs/dataset-structure.md)
 - [📄 보고서 (Word)](docs/휴머노이드_데이터셋_구조분석_보고서.docx) — 샘플 이미지 10장 포함 ([docs/assets/](docs/assets/))
 - [📄 EgoDex EDA 보고서 (Word)](docs/EgoDex_EDA_보고서.docx) — 스켈레톤 재투영·구조도 등 그림 16장 + 샘플 클립 2개
-- [📄 AgiBot EDA 보고서 (Word)](docs/AgiBot_EDA_보고서.docx) — 전체vs표본 비교도·7카메라·3계층 주석 타임라인 등 그림 9장 + BBox 오버레이 클립
+- [📄 AgiBot EDA 보고서 (Word)](docs/AgiBot_EDA.docx) — 전체 요약 도식·7카메라·3계층 주석 타임라인 등 그림 11장 + BBox 오버레이 클립
+- [🔍 AgiBot 3자 정합성 검증 리포트](docs/agibot-verification-20260801.md) — 문서↔서버↔HF원본 대조 결과
 - [🎬 에피소드 샘플 영상](docs/samples/) — Brainco GraspOreo 5번(4카메라 그리드 + 개별 클립), Humanoid Everyday 3800번(RGB+depth+LiDAR 3분할)
 
 ## 진행상황 빠른 확인
