@@ -1,0 +1,31 @@
+{
+ "prompt": "toothpaste tube . plate .",
+ "n_frames": 194,
+ "fps": 10.0,
+ "stats": {
+  "toothpaste": {
+   "is_target": true,
+   "accepted": 96,
+   "rejected": 98,
+   "coverage": 0.495,
+   "occluded_frames": 49,
+   "size_median": [
+    0.0198,
+    0.0028,
+    0.0075
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 178,
+   "rejected": 16,
+   "coverage": 0.918,
+   "occluded_frames": 3,
+   "size_median": [
+    0.1823,
+    0.1238,
+    0.0856
+   ]
+  }
+ }
+}

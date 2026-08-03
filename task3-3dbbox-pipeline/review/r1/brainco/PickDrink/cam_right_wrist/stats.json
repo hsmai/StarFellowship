@@ -1,0 +1,27 @@
+{
+ "prompt": "red cup . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stats": {
+  "red cup": {
+   "is_target": true,
+   "accepted": 20,
+   "rejected": 171,
+   "coverage": 0.091,
+   "occluded_frames": 4,
+   "size_median": [
+    0.0887,
+    0.0454,
+    0.0253
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 0,
+   "rejected": 0,
+   "coverage": 0.0,
+   "occluded_frames": 0,
+   "size_median": null
+  }
+ }
+}

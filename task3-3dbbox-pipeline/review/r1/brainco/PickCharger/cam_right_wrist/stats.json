@@ -1,0 +1,31 @@
+{
+ "prompt": "small white adapter . charger plug . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stats": {
+  "charger": {
+   "is_target": true,
+   "accepted": 97,
+   "rejected": 96,
+   "coverage": 0.441,
+   "occluded_frames": 47,
+   "size_median": [
+    0.0507,
+    0.0773,
+    0.0354
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 13,
+   "rejected": 36,
+   "coverage": 0.059,
+   "occluded_frames": 0,
+   "size_median": [
+    0.2128,
+    0.0564,
+    0.0569
+   ]
+  }
+ }
+}

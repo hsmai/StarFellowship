@@ -1,0 +1,31 @@
+{
+ "prompt": "apple . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stats": {
+  "apple": {
+   "is_target": true,
+   "accepted": 161,
+   "rejected": 59,
+   "coverage": 0.732,
+   "occluded_frames": 45,
+   "size_median": [
+    0.1229,
+    0.0731,
+    0.0225
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 84,
+   "rejected": 77,
+   "coverage": 0.382,
+   "occluded_frames": 19,
+   "size_median": [
+    0.0506,
+    0.0414,
+    0.0279
+   ]
+  }
+ }
+}

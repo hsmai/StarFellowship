@@ -1,0 +1,31 @@
+{
+ "prompt": "oreo snack package . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stats": {
+  "oreo": {
+   "is_target": true,
+   "accepted": 190,
+   "rejected": 30,
+   "coverage": 0.864,
+   "occluded_frames": 42,
+   "size_median": [
+    0.1073,
+    0.0463,
+    0.0139
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "occluded_frames": 4,
+   "size_median": [
+    0.2946,
+    0.1361,
+    0.1165
+   ]
+  }
+ }
+}

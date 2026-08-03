@@ -1,0 +1,31 @@
+{
+ "prompt": "rubiks cube . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stats": {
+  "rubiks cube": {
+   "is_target": true,
+   "accepted": 218,
+   "rejected": 2,
+   "coverage": 0.991,
+   "occluded_frames": 22,
+   "size_median": [
+    0.0699,
+    0.0703,
+    0.0254
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "occluded_frames": 5,
+   "size_median": [
+    0.2978,
+    0.1416,
+    0.1143
+   ]
+  }
+ }
+}

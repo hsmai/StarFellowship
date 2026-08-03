@@ -1,0 +1,31 @@
+{
+ "prompt": "stuffed animal toy . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stats": {
+  "doll": {
+   "is_target": true,
+   "accepted": 4,
+   "rejected": 33,
+   "coverage": 0.018,
+   "occluded_frames": 0,
+   "size_median": [
+    0.1365,
+    0.1495,
+    0.0172
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "accepted": 126,
+   "rejected": 61,
+   "coverage": 0.573,
+   "occluded_frames": 41,
+   "size_median": [
+    0.1058,
+    0.027,
+    0.0601
+   ]
+  }
+ }
+}
