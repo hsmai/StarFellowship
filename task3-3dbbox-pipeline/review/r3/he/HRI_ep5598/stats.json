@@ -1,0 +1,33 @@
+{
+ "prompt": "rose . flower with stem . bouquet .",
+ "n_frames": 152,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "rose": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 151,
+   "rejected": 1,
+   "coverage": 0.993,
+   "coverage_det": 0.993,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 1,
+   "coverage_B": 1.0,
+   "occluded_frames": 6,
+   "n_history": 40,
+   "det_score_median": 0.515,
+   "size_median": [
+    0.3354,
+    0.1725,
+    0.225
+   ],
+   "size_ref": [
+    0.3525,
+    0.2082,
+    0.3057
+   ]
+  }
+ }
+}

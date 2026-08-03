@@ -1,0 +1,58 @@
+{
+ "prompt": "toothpaste tube . plate .",
+ "n_frames": 194,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "toothpaste": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 194,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 0.526,
+   "prop_accepted": 92,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 13,
+   "n_history": 40,
+   "det_score_median": 0.602,
+   "size_median": [
+    0.1428,
+    0.042,
+    0.0302
+   ],
+   "size_ref": [
+    0.1477,
+    0.0429,
+    0.035
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 193,
+   "rejected": 1,
+   "coverage": 0.995,
+   "coverage_det": 0.964,
+   "prop_accepted": 6,
+   "ghost_blocked": 1,
+   "coasting_frames": 1,
+   "coverage_B": 1.0,
+   "occluded_frames": 37,
+   "n_history": 40,
+   "det_score_median": 0.667,
+   "size_median": [
+    0.1716,
+    0.1341,
+    0.1041
+   ],
+   "size_ref": [
+    0.1737,
+    0.136,
+    0.1078
+   ]
+  }
+ }
+}

@@ -1,0 +1,58 @@
+{
+ "prompt": "white charger . power adapter . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "charger": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 216,
+   "rejected": 4,
+   "coverage": 0.982,
+   "coverage_det": 0.982,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 0.982,
+   "occluded_frames": 0,
+   "n_history": 40,
+   "det_score_median": 0.386,
+   "size_median": [
+    0.0799,
+    0.2788,
+    0.299
+   ],
+   "size_ref": [
+    0.0853,
+    0.2818,
+    0.3102
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 0.986,
+   "prop_accepted": 3,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 31,
+   "n_history": 40,
+   "det_score_median": 0.638,
+   "size_median": [
+    0.165,
+    0.1311,
+    0.0803
+   ],
+   "size_ref": [
+    0.1688,
+    0.1388,
+    0.0841
+   ]
+  }
+ }
+}

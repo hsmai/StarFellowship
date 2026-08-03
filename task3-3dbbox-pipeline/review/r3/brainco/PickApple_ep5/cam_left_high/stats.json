@@ -1,0 +1,58 @@
+{
+ "prompt": "apple . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "apple": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 0.982,
+   "prop_accepted": 4,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 30,
+   "n_history": 40,
+   "det_score_median": 0.673,
+   "size_median": [
+    0.083,
+    0.0737,
+    0.0372
+   ],
+   "size_ref": [
+    0.0845,
+    0.0752,
+    0.0395
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 1.0,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 36,
+   "n_history": 40,
+   "det_score_median": 0.693,
+   "size_median": [
+    0.1934,
+    0.1635,
+    0.0909
+   ],
+   "size_ref": [
+    0.1973,
+    0.1672,
+    0.0933
+   ]
+  }
+ }
+}

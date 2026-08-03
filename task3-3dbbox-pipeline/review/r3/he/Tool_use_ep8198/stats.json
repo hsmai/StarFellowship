@@ -1,0 +1,33 @@
+{
+ "prompt": "duster . feather brush . cleaning tool .",
+ "n_frames": 142,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "duster": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 142,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 1.0,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 24,
+   "n_history": 40,
+   "det_score_median": 0.378,
+   "size_median": [
+    0.3037,
+    0.127,
+    0.2792
+   ],
+   "size_ref": [
+    0.3415,
+    0.1629,
+    0.375
+   ]
+  }
+ }
+}

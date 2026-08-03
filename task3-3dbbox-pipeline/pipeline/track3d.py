@@ -219,8 +219,13 @@ class Track:
             if d > DIAG_UP * dm:
                 return False, f"diag>{DIAG_UP}x", diag
 
-        # 유령 차단 — prop에만, 그리고 **유령 신호가 동반될 때만** 적용한다.
-        # 무조건 시간 예산으로 자르면 정상 구간이 대량으로 잘린다(실측 Tool_use 0.99->0.41).
+        # 전파 프레임은 이력 크기와 크게 다르면 무조건 기각한다(유령의 주 형태).
+        if src == "prop":
+            r = diag.get("d_over_dm")
+            if r is not None and not (0.55 <= r <= 1.8):
+                self.n_ghost_block += 1
+                return False, "ghost_size", diag
+        # 유령 신호(마스크 붕괴·경계 접촉·깊이 이탈)가 동반되면 추가로 차단한다.
         if src == "prop" and ghost_sig:
             r = diag.get("d_over_dm")
             if r is not None and r < DIAG_LO:
@@ -421,7 +426,7 @@ class EpisodeTracker:
                     pw, ph = phys_width(b, z, K)
                     if max(pw, ph) > MAX_PHYS_SIZE:
                         continue
-            bonus = 0.3 * iou2d(b, tr.box2d) if tr.box2d is not None else 0.0
+            bonus = 0.45 * iou2d(b, tr.box2d) if tr.box2d is not None else 0.0
             cands.append((s + bonus, float(s), list(map(float, b)), str(p)))
         if not cands:
             return None
@@ -450,7 +455,12 @@ class EpisodeTracker:
             if m is not None:
                 box, sc, phr, ncomp = m
                 pend[key] = (box, "det" if sc >= STRONG_THR else "weak", sc, phr, ncomp)
-            elif tr.confirmed and tr.anchor_box2d is not None:
+            elif (tr.confirmed and tr.anchor_box2d is not None
+                  and tr.frames_since_evi < int(1.0 * self.fps)):
+                # 실검출 없이 1초를 넘기면 전파하지 않는다. 사용자 지적:
+                # "target object가 카메라에 안 잡힐 때 다른 물체에 3d box를 씌운다",
+                # "물건을 집지 않는 쪽 wrist에서 공백에 3d box를 잡는다".
+                # 방식 B의 coast가 그 구간을 명시적 추정으로 덮으므로 정보 손실은 없다.
                 # 전파 창은 **마지막 실검출**에 앵커링한다. 자기 출력으로 갱신하면
                 # 창이 프레임당 0.97배로 붕괴해 유령이 된다(실측 161,839->2,112px²).
                 dt = max(tr.frames_since_evi, 1)
@@ -491,9 +501,9 @@ class EpisodeTracker:
             mk = clip_mask_to_box(m, box2d, 1.15)
             # 얇은 부속물(토끼 귀·꽃 줄기)이 별개 성분으로 잘리지 않게, 깊이가 비슷한
             # 성분은 모두 유지한다. 케이블처럼 깊이가 다른 부속물은 여전히 배제된다.
-            ms_hint = tr.med_size()
-            dz_tol = float(np.clip(0.5 * ms_hint[2], 0.015, 0.05)) if ms_hint is not None else 0.025
-            mk = same_depth_components(mk, depth, dscale, box2d, dz=dz_tol)
+            # 부속물 허용 깊이차를 작게 고정한다. 두께 비례로 두면 두꺼운 물체에서
+            # 허용치가 커져 손까지 합쳐진다.
+            mk = same_depth_components(mk, depth, dscale, box2d, dz=0.02)
             kk = 3 if min(box2d[2] - box2d[0], box2d[3] - box2d[1]) < 80 else 5
             mk_e = cv2.erode(mk.astype(np.uint8), np.ones((kk, kk), np.uint8), 1).astype(bool)
             mk_a = align_mask_to_depth(mk_e, dx=align_dx)
@@ -520,9 +530,13 @@ class EpisodeTracker:
                             (border_touch(box2d, W, H) >= 2) or \
                             (tr.frames_since_evi > int(2.0 * self.fps))
 
+            # 필터 강도는 r2 값으로 되돌린다. r3에서 (2,98)+mad3.0으로 완화했더니
+            # 얇은 부속물은 살았지만 배경·로봇팔이 함께 들어와 크기가 부풀었다
+            # (charger 6x6x2 -> 8x28x30cm, oreo head 100% -> 67%).
+            # 부속물 복원은 same_depth_components가 담당하므로 여기서 완화할 필요가 없다.
             pts = filter_points(backproject(depth, K, mk_a, depth_scale=dscale,
                                             valid_range=(0.1, 5.0)),
-                                percentile=(2, 98), foreground_mad=3.0)
+                                percentile=(10, 90), foreground_mad=1.5)
             pts = cluster_depth(pts, gap=0.06)
             b = fit_box3d(pts, pct=1.0)
 

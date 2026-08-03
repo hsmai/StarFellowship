@@ -1,0 +1,50 @@
+{
+ "prompt": "stuffed animal toy . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "doll": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 206,
+   "rejected": 14,
+   "coverage": 0.936,
+   "coverage_det": 0.918,
+   "prop_accepted": 4,
+   "ghost_blocked": 2,
+   "coasting_frames": 14,
+   "coverage_B": 1.0,
+   "occluded_frames": 22,
+   "n_history": 40,
+   "det_score_median": 0.557,
+   "size_median": [
+    0.3504,
+    0.4886,
+    0.2145
+   ],
+   "size_ref": [
+    0.3788,
+    0.5421,
+    0.2537
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": false,
+   "accepted": 0,
+   "rejected": 220,
+   "coverage": 0.0,
+   "coverage_det": 0.0,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 0.0,
+   "occluded_frames": 0,
+   "n_history": 0,
+   "det_score_median": 0.278,
+   "size_median": null,
+   "size_ref": null
+  }
+ }
+}

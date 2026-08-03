@@ -1,0 +1,58 @@
+{
+ "prompt": "rubiks cube . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "rubiks cube": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 188,
+   "rejected": 32,
+   "coverage": 0.855,
+   "coverage_det": 0.768,
+   "prop_accepted": 19,
+   "ghost_blocked": 13,
+   "coasting_frames": 29,
+   "coverage_B": 0.986,
+   "occluded_frames": 17,
+   "n_history": 35,
+   "det_score_median": 0.646,
+   "size_median": [
+    0.2765,
+    0.2385,
+    0.1641
+   ],
+   "size_ref": [
+    0.3425,
+    0.2626,
+    0.1848
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 91,
+   "rejected": 129,
+   "coverage": 0.414,
+   "coverage_det": 0.218,
+   "prop_accepted": 43,
+   "ghost_blocked": 9,
+   "coasting_frames": 71,
+   "coverage_B": 0.736,
+   "occluded_frames": 4,
+   "n_history": 28,
+   "det_score_median": 0.323,
+   "size_median": [
+    0.0515,
+    0.0374,
+    0.0387
+   ],
+   "size_ref": [
+    0.0565,
+    0.0397,
+    0.0482
+   ]
+  }
+ }
+}
