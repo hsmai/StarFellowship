@@ -27,6 +27,11 @@
 - [x] STEP 3 — Brainco 442프레임 전부 성공 → `results/step3_brainco.mp4`
 - [x] STEP 4 — HE depth 검증 완료 (MAE 0.43m, 상대오차 43%)
 - [x] STEP 5 — 문서화 완료 → [docs/step1-5-results.md](docs/step1-5-results.md)
+- [x] **심화 A~D 완료 (8/2 야간)** → [docs/step6-extra-AD.md](docs/step6-extra-AD.md)
+  - A. 비디오 추적 → 오레오 검출률 52%→**100%**
+  - B. AgiBot GT 대조 → 검출 **IoU 0.741**, depth **MAE 0.209m**, intrinsics 오차 +9.7%
+  - C. 4카메라 → 손목 카메라가 조작물체를 머리 대비 **1.6배** 검출 (상보성)
+  - D. 8태스크 확장 → **8/8 동작**, 흰색·비정형 물체는 프롬프트 개선 필요
 
 ## 리소스 (실측)
 
