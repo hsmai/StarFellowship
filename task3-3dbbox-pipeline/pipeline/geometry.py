@@ -10,6 +10,7 @@ RoboBrain(RefSpatial) 파이프라인 기준:
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import numpy as np
+import cv2
 
 
 # ---------------------------------------------------------------- intrinsics
@@ -103,6 +104,77 @@ def filter_points(
     mean_d = d[:, 1:].mean(axis=1)
     thr = mean_d.mean() + std_ratio * mean_d.std()
     return pts[mean_d <= thr]
+
+
+def same_depth_components(mask: np.ndarray, depth: np.ndarray, dscale: float,
+                          box2d, dz: float = 0.03) -> np.ndarray:
+    """마스크의 연결 성분 중 **같은 물체로 볼 수 있는 것들의 합집합**을 남긴다.
+
+    '가장 큰 덩어리만' 남기면 얇게 이어진 부속물이 잘려나간다 — 라운드2에서
+    토끼 귀와 꽃 줄기가 3D 박스에서 빠진 원인이다. 반면 충전기 케이블처럼
+    깊이가 다른 부속물은 여전히 배제해야 한다.
+    두 요구를 만족하는 기준이 **깊이 근접성**이다: 최대 성분과 depth 중앙값이
+    dz 이내이고 검출 박스 안에 있는 성분만 합친다.
+    """
+    m = np.ascontiguousarray(mask.astype(np.uint8))
+    if m.sum() < 30:
+        return mask
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+    if n <= 2:
+        return mask
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    k0 = int(np.argmax(areas)) + 1
+    d0 = depth[lab == k0]
+    d0 = d0[np.isfinite(d0) & (d0 > 0)]
+    if d0.size < 10:
+        return lab == k0
+    z0 = float(np.median(d0)) * dscale
+    x1, y1, x2, y2 = box2d
+    out = (lab == k0)
+    a0 = float(areas[k0 - 1])
+    for i in range(1, n):
+        if i == k0 or areas[i - 1] < 20:
+            continue
+        # 부속물(귀·줄기)은 본체보다 작다. 이 제한이 없으면 같은 깊이에 있는
+        # 로봇 손이 통째로 합쳐진다(스모크 실측: charger 6x6x2 -> 7x25x24cm).
+        if areas[i - 1] > 0.5 * a0:
+            continue
+        cx = stats[i, cv2.CC_STAT_LEFT] + stats[i, cv2.CC_STAT_WIDTH] / 2
+        cy = stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] / 2
+        if not (x1 <= cx <= x2 and y1 <= cy <= y2):
+            continue
+        di = depth[lab == i]
+        di = di[np.isfinite(di) & (di > 0)]
+        if di.size < 10:
+            continue
+        if abs(float(np.median(di)) * dscale - z0) <= dz:
+            out |= (lab == i)
+    return out
+
+
+def mirror_extend_z(box3d, pts, min_pts: int = 30):
+    """단일 시점 두께 결손을 대칭 가정으로 복원한다 (방식 B 전용).
+
+    카메라는 물체 앞면만 보므로 AABB의 깊이 방향 두께가 구조적으로 과소 추정된다
+    (실측: 두꺼운 물체에서 z/min(x,y)가 0.25~0.47로 붕괴).
+    점군의 앞면 깊이를 기준으로 뒤쪽을 대칭 확장하되, 관측된 두께의 2.5배를
+    넘지 않게 제한한다.
+    """
+    s = np.array(box3d.size, dtype=float)
+    if pts is None or len(pts) < min_pts:
+        return s
+    z = pts[:, 2]
+    z_front = float(np.percentile(z, 5))
+    z_med = float(np.median(z))
+    depth_obs = float(s[2])
+    est = 2.0 * (z_med - z_front)
+    if est <= depth_obs:
+        return s
+    out = s.copy()
+    # 상한을 관측 두께의 1.8배로 둔다. 물체가 기울어져 있으면 z_med-z_front가
+    # 두께가 아니라 기울기를 재므로 무제한 확장은 위험하다.
+    out[2] = min(est, depth_obs * 1.8 if depth_obs > 1e-4 else est)
+    return out
 
 
 def largest_component(mask: np.ndarray, min_ratio: float = 0.15) -> np.ndarray:

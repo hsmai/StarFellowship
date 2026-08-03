@@ -1,0 +1,40 @@
+{
+ "prompt": "pack of wet wipes . plate . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "tissue pack": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 84,
+   "rejected": 136,
+   "coverage": 0.382,
+   "coasting_frames": 99,
+   "coverage_B": 0.832,
+   "occluded_frames": 69,
+   "n_history": 22,
+   "size_median": [
+    0.0405,
+    0.0226,
+    0.0029
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 154,
+   "rejected": 66,
+   "coverage": 0.7,
+   "coasting_frames": 66,
+   "coverage_B": 1.0,
+   "occluded_frames": 120,
+   "n_history": 5,
+   "size_median": [
+    0.0848,
+    0.1399,
+    0.2427
+   ]
+  }
+ }
+}

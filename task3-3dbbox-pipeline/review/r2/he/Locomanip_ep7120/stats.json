@@ -1,0 +1,40 @@
+{
+ "prompt": "water bottle . plastic bottle . container box . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 154,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "bottle": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 122,
+   "rejected": 32,
+   "coverage": 0.792,
+   "coasting_frames": 0,
+   "coverage_B": 0.792,
+   "occluded_frames": 121,
+   "n_history": 1,
+   "size_median": [
+    0.1101,
+    0.225,
+    0.122
+   ]
+  },
+  "container": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 123,
+   "rejected": 31,
+   "coverage": 0.799,
+   "coasting_frames": 0,
+   "coverage_B": 0.799,
+   "occluded_frames": 122,
+   "n_history": 1,
+   "size_median": [
+    0.3495,
+    0.1911,
+    0.118
+   ]
+  }
+ }
+}

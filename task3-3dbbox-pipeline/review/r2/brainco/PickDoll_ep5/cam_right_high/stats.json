@@ -1,0 +1,40 @@
+{
+ "prompt": "stuffed animal toy . plate . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "doll": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 177,
+   "n_history": 30,
+   "size_median": [
+    0.2077,
+    0.1869,
+    0.0994
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 216,
+   "n_history": 4,
+   "size_median": [
+    0.191,
+    0.1277,
+    0.0771
+   ]
+  }
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "prompt": "duster . feather brush . cleaning tool . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 142,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "duster": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 141,
+   "rejected": 1,
+   "coverage": 0.993,
+   "coasting_frames": 1,
+   "coverage_B": 1.0,
+   "occluded_frames": 51,
+   "n_history": 28,
+   "size_median": [
+    0.3224,
+    0.1292,
+    0.056
+   ]
+  }
+ }
+}

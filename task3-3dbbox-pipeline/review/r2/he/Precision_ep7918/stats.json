@@ -1,0 +1,40 @@
+{
+ "prompt": "rose . flower with stem . pink vase . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 190,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "rose": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 174,
+   "rejected": 16,
+   "coverage": 0.916,
+   "coasting_frames": 16,
+   "coverage_B": 1.0,
+   "occluded_frames": 165,
+   "n_history": 23,
+   "size_median": [
+    0.1019,
+    0.0624,
+    0.045
+   ]
+  },
+  "vase": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 190,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 30,
+   "n_history": 30,
+   "size_median": [
+    0.1536,
+    0.1322,
+    0.223
+   ]
+  }
+ }
+}

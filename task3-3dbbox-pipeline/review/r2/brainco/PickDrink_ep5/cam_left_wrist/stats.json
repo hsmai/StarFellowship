@@ -1,0 +1,40 @@
+{
+ "prompt": "red cup . plate . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "red cup": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 186,
+   "rejected": 34,
+   "coverage": 0.845,
+   "coasting_frames": 3,
+   "coverage_B": 0.859,
+   "occluded_frames": 159,
+   "n_history": 3,
+   "size_median": [
+    0.2944,
+    0.2227,
+    0.0244
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": false,
+   "accepted": 1,
+   "rejected": 219,
+   "coverage": 0.005,
+   "coasting_frames": 0,
+   "coverage_B": 0.005,
+   "occluded_frames": 0,
+   "n_history": 1,
+   "size_median": [
+    0.1142,
+    0.1796,
+    0.082
+   ]
+  }
+ }
+}

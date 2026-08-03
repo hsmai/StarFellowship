@@ -1,0 +1,24 @@
+{
+ "prompt": "towel . cloth . fabric on desk . robot hand . robot arm . gripper . human hand .",
+ "n_frames": 126,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "towel": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 126,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 7,
+   "n_history": 30,
+   "size_median": [
+    0.5699,
+    0.2088,
+    0.17
+   ]
+  }
+ }
+}
