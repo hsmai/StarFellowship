@@ -58,8 +58,10 @@ class Track:
     """라벨 1개의 시간축 상태. 게이트 통과분만 이력에 반영한다."""
     MAX_MISS = 25          # 이 프레임 수 이상 실패하면 트랙 리셋(신규 고신뢰 검출 대기)
 
-    def __init__(self, label):
+    def __init__(self, label, is_target=False, max_area_ratio=0.12):
         self.label = label
+        self.is_target = is_target      # 태스크의 주 조작 대상인가
+        self.max_area_ratio = max_area_ratio   # 2D 박스가 화면에서 차지할 수 있는 최대 비율
         self.sizes = []            # 최근 승인된 size 목록 (최대 30)
         self.center = None         # 마지막 승인 3D 중심
         self.box2d = None          # 마지막 승인 2D 박스
@@ -68,6 +70,7 @@ class Track:
         self.ema_s = None
         self.miss = 0
         self.n_acc = self.n_rej = 0
+        self.n_occluded = 0        # 방식 B에서 가려짐으로 판정한 프레임 수
 
     def med_size(self):
         return np.median(np.array(self.sizes), axis=0) if self.sizes else None
@@ -112,6 +115,34 @@ class Track:
         self.ema_s = np.array(b.size) if self.ema_s is None else (1 - a) * self.ema_s + a * np.array(b.size)
         self.miss = 0; self.n_acc += 1
 
+    def amodal(self, b):
+        """방식 B — 가려짐 보정 박스.
+
+        로봇 손이 물체를 덮으면 보이는 픽셀이 줄어 박스가 급격히 작아진다. 이때 크기를
+        이력 중앙값으로 되돌리고, 보이는 부분의 위치를 기준으로 물체 전체 범위를 추정한다.
+        반환 (center, size, occluded, ratio)
+        """
+        ms = self.med_size()
+        cur = np.array(b.size)
+        cen = np.array(b.center)
+        if ms is None or len(self.sizes) < 5:
+            return cen, cur, False, 1.0
+        ratio = float(np.prod(cur) / max(np.prod(ms), 1e-9))
+        if ratio >= 0.55:                       # 충분히 보임 — 방식 A와 동일
+            return cen, cur, False, ratio
+        # 가려짐: 크기는 이력 중앙값, 중심은 보이는 부분을 감싸도록 최소 이동
+        size = ms.copy()
+        vmin, vmax = cen - cur / 2, cen + cur / 2
+        new_c = cen.copy()
+        for i in range(3):                      # 보이는 조각이 박스 안에 들어오게 축별 보정
+            lo, hi = new_c[i] - size[i] / 2, new_c[i] + size[i] / 2
+            if vmin[i] < lo:
+                new_c[i] -= (lo - vmin[i])
+            elif vmax[i] > hi:
+                new_c[i] += (vmax[i] - hi)
+        self.n_occluded += 1
+        return new_c, size, True, ratio
+
     def reject(self):
         self.miss += 1; self.n_rej += 1
         if self.miss > self.MAX_MISS:      # 오래 놓치면 과거 위치를 믿지 않음
@@ -119,20 +150,38 @@ class Track:
 
 
 class EpisodeTracker:
-    """에피소드 1개 처리기. targets = {짧은키: 표시라벨} (프롬프트 토큰 매칭용)"""
+    """에피소드 1개 처리기.
+    targets = {짧은키: 표시라벨}  또는  {짧은키: (표시라벨, is_target)}
+    is_target=True 인 라벨이 태스크의 주 조작 대상이며, 2D 면적 상한이 더 엄격하게 걸린다.
+    """
 
     def __init__(self, targets, det, seg, prompt, low_thr=0.20):
-        self.targets = targets
+        self.targets = {}
+        self.tracks = {}
+        for k, v in targets.items():
+            if isinstance(v, (list, tuple)):
+                label, is_tgt = v[0], bool(v[1])
+            else:
+                label, is_tgt = v, False
+            self.targets[k] = label
+            # 주 조작 대상은 사람이 한 손으로 드는 물체라 화면의 12%를 넘지 않는다.
+            # (PickCharger 실측: 오검출 박스 50,482px = 화면 16%, 정상 접시 9,137px = 3%)
+            self.tracks[k] = Track(label, is_target=is_tgt,
+                                   max_area_ratio=0.12 if is_tgt else 0.45)
         self.det, self.seg, self.prompt = det, seg, prompt
         self.low_thr = low_thr
-        self.tracks = {k: Track(v) for k, v in targets.items()}
 
-    def _match(self, key, boxes, phrases, scores):
-        """검출 결과에서 key 토큰이 포함된 후보 중 최적 1개 (score + 이전 IoU 가중)"""
+    def _match(self, key, boxes, phrases, scores, WH):
+        """검출 결과에서 key 토큰이 포함된 후보 중 최적 1개 (score + 이전 IoU 가중).
+        화면 대비 과대한 박스는 후보에서 제외한다 — 오검출(로봇 팔 전체 등) 차단."""
         tr = self.tracks[key]
+        W, H = WH
+        area_cap = tr.max_area_ratio * W * H
         best, bs = None, -1
         for b, p, s in zip(boxes, phrases, scores):
             if key not in str(p):
+                continue
+            if (b[2] - b[0]) * (b[3] - b[1]) > area_cap:      # 과대 박스 배제
                 continue
             bonus = 0.3 * iou2d(b, tr.box2d) if tr.box2d is not None else 0.0
             if s + bonus > bs:
@@ -147,7 +196,7 @@ class EpisodeTracker:
         pend = {}                                    # key -> (box2d, src)
         missing = []
         for key in self.targets:
-            b = self._match(key, boxes, phrases, scores)
+            b = self._match(key, boxes, phrases, scores, (W, H))
             if b is not None:
                 pend[key] = (b, "det")
             else:
@@ -201,29 +250,41 @@ class EpisodeTracker:
             dmed = float(np.median(depth[mk])) * dscale if mk.sum() > 0 else None
             ok, why = tr.gate(b, mk, box2d, src == "prop", dmed)
             if ok:
+                # 방식 B(가려짐 보정)는 accept 전에 계산해야 이력이 오염되지 않는다
+                cB, sB, occ, ratio = tr.amodal(b)
                 tr.accept(b, box2d, dmed)
-                results.append(dict(key=k, label=tr.label, src=src, accepted=True, reason="",
-                                    box2d=box2d, center=list(map(float, tr.ema_c)),
-                                    size=list(map(float, tr.ema_s)), raw_size=list(map(float, b.size)),
-                                    n_points=int(b.n_points), _b=b))
+                results.append(dict(
+                    key=k, label=tr.label, src=src, accepted=True, reason="", box2d=box2d,
+                    # 방식 A — 보이는 부분만 (EMA 스무딩 적용)
+                    center=list(map(float, tr.ema_c)), size=list(map(float, tr.ema_s)),
+                    # 방식 B — 가려짐 보정
+                    center_amodal=list(map(float, cB)), size_amodal=list(map(float, sB)),
+                    occluded=bool(occ), visible_ratio=round(float(ratio), 3),
+                    raw_size=list(map(float, b.size)), n_points=int(b.n_points), _b=b))
             else:
                 tr.reject()
                 results.append(dict(key=k, label=tr.label, src=src, accepted=False, reason=why))
         return results
 
-    def draw(self, vis, results, K):
+    def draw(self, vis, results, K, mode="A"):
+        """mode='A' 보이는 부분만 / 'B' 가려짐 보정."""
         from geometry import Box3D
         pal = {"det": (0, 220, 120), "redet": (0, 200, 255), "prop": (255, 160, 40)}
         for r in results:
             if not r.get("accepted"):
                 continue
-            raw = r.pop("_b")
-            # 렌더는 EMA 스무딩된 중심·크기로 박스 재구성
-            c, s = np.array(r["center"]), np.array(r["size"])
+            raw = r.get("_b")
+            if mode == "B":
+                c, s = np.array(r["center_amodal"]), np.array(r["size_amodal"])
+                col = (60, 120, 255) if r.get("occluded") else pal[r["src"]]
+                tag = " (가림보정)" if r.get("occluded") else ""
+            else:
+                c, s = np.array(r["center"]), np.array(r["size"])
+                col, tag = pal[r["src"]], ""
             b = Box3D(center=c, size=s, min_xyz=c - s / 2, max_xyz=c + s / 2,
-                      n_points=raw.n_points)
-            draw_box3d(vis, b, K, color=pal[r["src"]], thickness=2,
-                       label=f"{r['label']} {s[0]*100:.0f}x{s[1]*100:.0f}x{s[2]*100:.0f}cm")
+                      n_points=raw.n_points if raw is not None else 0)
+            draw_box3d(vis, b, K, color=col, thickness=2,
+                       label=f"{r['label']} {s[0]*100:.0f}x{s[1]*100:.0f}x{s[2]*100:.0f}cm{tag}")
         return vis
 
     def stats(self, n_frames):
@@ -231,7 +292,9 @@ class EpisodeTracker:
         for k, tr in self.tracks.items():
             ms = tr.med_size()
             out[tr.label] = dict(
+                is_target=tr.is_target,
                 accepted=tr.n_acc, rejected=tr.n_rej,
                 coverage=round(tr.n_acc / max(n_frames, 1), 3),
+                occluded_frames=tr.n_occluded,
                 size_median=None if ms is None else [round(float(x), 4) for x in ms])
         return out
