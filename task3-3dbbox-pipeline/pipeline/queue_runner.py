@@ -32,13 +32,14 @@ HE = f"{DATA}/humanoid-everyday"
 DEV = "cuda:0"                      # CUDA_VISIBLE_DEVICES로 물리 GPU 1장만 노출
 STALE_SEC = 3600                    # 1시간 넘게 진행 없는 claim은 회수
 
-BC_STRIDE, BC_MAX = 10, 80          # 30fps -> 3fps 샘플, 에피소드당 최대 프레임
-HE_STRIDE, HE_MAX = 10, 40
+BC_STRIDE, BC_MAX = 5, 200          # 30fps -> 6fps 샘플 (영상이 부드럽게 보이도록)
+HE_STRIDE, HE_MAX = 5, 90
 
 # 에피소드는 같은 태스크의 반복 시도라 전수 처리는 중복이 크다.
 # 태스크별로 균등 샘플링해 '모든 태스크 종류'를 커버하는 것이 파이프라인 검증의 핵심.
-BC_PER_TASK = 20                    # 8태스크 x 20 = 160 에피소드 (태스크당 200개 중)
-HE_PER_TASK = 5                     # 246태스크 x 5 = 약 1,230 에피소드
+# fps를 3->6으로 올린 만큼 에피소드 수를 줄여 총 처리량을 8시간 안에 맞춘다.
+BC_PER_TASK = 12                    # 8태스크 x 12 = 96 에피소드
+HE_PER_TASK = 3                     # 246태스크 x 3 = 약 738 에피소드
 SAMPLE_SEED = 20260803
 
 BRAINCO_TASKS = {
@@ -245,7 +246,9 @@ def process_job(job, models, wid):
     H, W = seq[0][0].shape[:2]
     if rep:
         tag = f"BC_{job['task']}" if ds == "bc" else f"HE_{job.get('cat','x')}"
-        vw = cv2.VideoWriter(f"{REP}/{tag}_ep{ep}.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 6, (W, H))
+        fps_out = 30.0 / (BC_STRIDE if ds == "bc" else HE_STRIDE)   # 원본 속도로 재생
+        vw = cv2.VideoWriter(f"{REP}/{tag}_ep{ep}.mp4", cv2.VideoWriter_fourcc(*"mp4v"),
+                             fps_out, (W, H))
 
     for i, (img, draw_depth) in enumerate(seq):
         if ds == "bc":                                  # 3단계: depth 추정
@@ -292,7 +295,7 @@ def process_job(job, models, wid):
 
 
 # ============================================================ 워커
-def work(wid):
+def work(wid, rep_only=False):
     import torch
     from models_wrap import Detector, Segmenter, DepthEstimator
     t0 = time.time()
@@ -305,6 +308,9 @@ def work(wid):
     jobs = load_queue()
     # 대표 에피소드를 먼저 처리해 육안 검증을 빨리 할 수 있게 한다
     jobs.sort(key=lambda j: (not j.get("rep", False), j["id"]))
+    if rep_only:                       # 육안 검증 단계: 대표 15건만 처리하고 멈춘다
+        jobs = [j for j in jobs if j.get("rep")]
+        log(f"대표 전용 모드 — {len(jobs)}건", wid)
     n_ok = n_fail = n_frames = 0
     tstart = time.time()
     for j in jobs:
@@ -348,6 +354,6 @@ if __name__ == "__main__":
     if cmd == "build":
         build_queue()
     elif cmd == "work":
-        work(sys.argv[2] if len(sys.argv) > 2 else "w0")
+        work(sys.argv[2] if len(sys.argv) > 2 else "w0", rep_only=("--rep" in sys.argv))
     else:
         status()

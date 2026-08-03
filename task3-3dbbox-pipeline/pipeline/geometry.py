@@ -105,6 +105,49 @@ def filter_points(
     return pts[mean_d <= thr]
 
 
+def largest_component(mask: np.ndarray, min_ratio: float = 0.15) -> np.ndarray:
+    """마스크에서 가장 큰 연결 덩어리만 남긴다.
+
+    필요성(V2 1차 실측): 충전기는 본체+케이블, 컵은 컵+로봇팔 그림자가 하나의 마스크로
+    묶여 나왔고, 이들이 전부 한 점군으로 합쳐져 박스가 실제의 2~3배로 부풀었다.
+    (charger 8x22x21cm, red cup 13x17x30cm)
+    가장 큰 덩어리가 전체의 min_ratio 미만이면 물체가 쪼개진 상황이라 보고 원본을 유지한다.
+    """
+    import cv2
+    m = mask.astype(np.uint8)
+    if m.sum() < 30:
+        return mask
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+    if n <= 2:                                   # 배경 + 덩어리 1개
+        return mask
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    k = int(np.argmax(areas)) + 1
+    if areas[k - 1] / max(m.sum(), 1) < min_ratio:
+        return mask
+    return lab == k
+
+
+def cluster_depth(pts: np.ndarray, gap: float = 0.06) -> np.ndarray:
+    """점군을 z(깊이)로 정렬해 gap보다 큰 간격에서 끊고, 점이 가장 많은 구간만 취한다.
+
+    MAD 필터는 대칭 범위를 쓰므로 '물체 + 그로부터 떨어진 팔' 처럼 한쪽으로만 치우친
+    혼입을 놓친다. 이 함수는 깊이 방향으로 실제 분리된 덩어리를 골라낸다.
+    """
+    if len(pts) < 50:
+        return pts
+    z = np.sort(pts[:, 2])
+    idx = np.argsort(pts[:, 2])
+    breaks = np.where(np.diff(z) > gap)[0]
+    if len(breaks) == 0:
+        return pts
+    seg_start = np.concatenate([[0], breaks + 1])
+    seg_end = np.concatenate([breaks + 1, [len(z)]])
+    sizes = seg_end - seg_start
+    b = int(np.argmax(sizes))
+    keep = idx[seg_start[b]:seg_end[b]]
+    return pts[keep]
+
+
 def align_mask_to_depth(mask: np.ndarray, dx: int = 0, dy: int = 0) -> np.ndarray:
     """RGB 기준 마스크를 depth 좌표계로 평행이동 보정.
     HE 데이터 실측 결과 depth가 RGB 대비 약 dx=-20px 어긋나 있어 필요.

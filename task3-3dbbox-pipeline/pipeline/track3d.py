@@ -18,7 +18,14 @@ import numpy as np
 import cv2
 
 from geometry import (Intrinsics, backproject, filter_points, fit_box3d,
-                      draw_box3d, align_mask_to_depth)
+                      draw_box3d, align_mask_to_depth, largest_component, cluster_depth)
+
+# 조작 대상 물체의 상식적 상한(m). 사람이 한 손으로 드는 물체라 이보다 크면 배경 혼입이다.
+# plate처럼 넓은 물체를 위해 라벨별 예외를 둔다.
+MAX_SIZE_DEFAULT = 0.35
+MAX_SIZE_BY_LABEL = {"plate": 0.45, "doll": 0.45, "container": 0.60, "person": 2.2,
+                     "desk": 2.0, "table": 2.0, "monitor": 0.8, "whiteboard": 1.5,
+                     "chair": 1.2, "laptop": 0.6, "bag": 0.6, "box": 0.6}
 
 
 def iou2d(a, b):
@@ -65,8 +72,16 @@ class Track:
     def med_size(self):
         return np.median(np.array(self.sizes), axis=0) if self.sizes else None
 
+    def max_size(self):
+        for k, v in MAX_SIZE_BY_LABEL.items():
+            if k in self.label:
+                return v
+        return MAX_SIZE_DEFAULT
+
     def gate(self, b, mask, box2d, propagated, dmed):
-        """3중 게이트. 반환 (통과여부, 사유)"""
+        """4중 게이트. 반환 (통과여부, 사유)"""
+        if np.max(b.size) > self.max_size():        # 절대 상한 — 이력 없이도 즉시 기각
+            return False, f"absmax>{self.max_size():.2f}m"
         x1, y1, x2, y2 = box2d
         barea = max((x2 - x1) * (y2 - y1), 1.0)
         fill = mask.sum() / barea
@@ -169,13 +184,15 @@ class EpisodeTracker:
             box2d, src = pend[k]
             tr = self.tracks[k]
             mk = clip_mask_to_box(m.astype(bool), box2d, 1.15)
+            mk = largest_component(mk)               # 케이블·팔·그림자 등 딸린 덩어리 제거
             if src == "prop" and mk.sum() > 50:      # 전파면 mask 기준으로 박스 재산출
                 ys, xs = np.where(mk)
                 box2d = [float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max())]
             mk = cv2.erode(mk.astype(np.uint8), np.ones((5, 5), np.uint8), 1).astype(bool)
             mk = align_mask_to_depth(mk, dx=align_dx)
             pts = filter_points(backproject(depth, K, mk, depth_scale=dscale, valid_range=(0.1, 5.0)),
-                                percentile=(10, 90), foreground_mad=2.0)
+                                percentile=(10, 90), foreground_mad=1.5)
+            pts = cluster_depth(pts, gap=0.06)       # 깊이로 분리된 덩어리 중 주 덩어리만
             b = fit_box3d(pts)
             if b is None:
                 tr.reject()
