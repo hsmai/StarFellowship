@@ -151,10 +151,52 @@ def cluster_depth(pts: np.ndarray, gap: float = 0.06) -> np.ndarray:
 def align_mask_to_depth(mask: np.ndarray, dx: int = 0, dy: int = 0) -> np.ndarray:
     """RGB 기준 마스크를 depth 좌표계로 평행이동 보정.
     HE 데이터 실측 결과 depth가 RGB 대비 약 dx=-20px 어긋나 있어 필요.
-    (원 파이프라인에는 없는 단계 — 우리 데이터 특성상 추가)"""
+
+    zero-fill 시프트다. np.roll을 쓰면 잘린 열이 **반대편 가장자리로 감겨 들어와**
+    화면 끝 물체가 반대편 depth를 읽는다 — 라운드1에서 HE Locomanip의 병 박스가
+    4.2x1.3x4.3cm 쓰레기로 나와 이력을 오염시킨 원인이었다(재투영 오차 du=+606px).
+    """
     if dx == 0 and dy == 0:
         return mask
-    return np.roll(np.roll(mask, dy, axis=0), dx, axis=1)
+    out = np.zeros_like(mask)
+    H, W = mask.shape
+    xs_dst = slice(max(0, dx), W + min(0, dx))
+    xs_src = slice(max(0, -dx), W + min(0, -dx))
+    ys_dst = slice(max(0, dy), H + min(0, dy))
+    ys_src = slice(max(0, -dy), H + min(0, -dy))
+    out[ys_dst, xs_dst] = mask[ys_src, xs_src]
+    return out
+
+
+def check_reprojection(box3d, box2d, K: Intrinsics, align_dx: int = 0):
+    """3D 박스가 그것을 만든 2D 증거와 정합하는지 검사한다.
+
+    핀홀 모델상 반드시 성립해야 하는 자기정합 조건이라 물체 종류·태스크·카메라에
+    의존하지 않는다. 반환 (du, dv, rx, ry, inside):
+      du,dv : 3D 중심을 재투영한 점이 2D 박스 중심에서 벗어난 픽셀 거리
+      rx,ry : 3D 박스 폭·높이 / 2D 박스가 그 깊이에서 가리키는 기대 폭·높이
+      inside: 재투영점이 2D 박스를 1.25배 팽창시킨 영역 안에 있는가
+
+    주의: rx/ry는 fx가 소거되므로 '살아남은 점군이 2D 박스를 얼마나 채우는가'를 재는
+    양이다. 세로(ry)는 물체가 박스 상하단까지 꽉 차는 경우가 드물어 가로(rx)보다
+    계통적으로 작게 나온다(실측 rx 0.90~0.97 vs ry 0.61~0.78). 임계를 축별로 달리 둔다.
+    """
+    x1, y1, x2, y2 = box2d
+    x1 -= align_dx; x2 -= align_dx          # 마스크를 옮겼으므로 2D 증거도 같은 계로
+    cx3, cy3, z = float(box3d.center[0]), float(box3d.center[1]), float(box3d.center[2])
+    if z <= 1e-6:
+        return 0.0, 0.0, 0.0, 0.0, False
+    u = cx3 * K.fx / z + K.cx
+    v = cy3 * K.fy / z + K.cy
+    bw, bh = max(x2 - x1, 1.0), max(y2 - y1, 1.0)
+    ecx, ecy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+    du, dv = u - ecx, v - ecy
+    inside = (abs(du) <= 0.625 * bw * 1.0) and (abs(dv) <= 0.625 * bh * 1.0)
+    w_exp = bw * z / K.fx
+    h_exp = bh * z / K.fy
+    rx = float(box3d.size[0]) / max(w_exp, 1e-9)
+    ry = float(box3d.size[1]) / max(h_exp, 1e-9)
+    return float(du), float(dv), float(rx), float(ry), bool(inside)
 
 
 # ------------------------------------------------------------- 5단계 3D box
@@ -180,11 +222,20 @@ class Box3D:
                 f"size=({s[0]:.3f} x {s[1]:.3f} x {s[2]:.3f})m  pts={self.n_points}")
 
 
-def fit_box3d(pts: np.ndarray) -> Optional[Box3D]:
-    """정제된 점군에서 axis-aligned 3D box 산출 (리포트 명시 방식)."""
+def fit_box3d(pts: np.ndarray, pct: float = 1.0) -> Optional[Box3D]:
+    """정제된 점군에서 axis-aligned 3D box 산출 (리포트 명시 방식).
+
+    pct<1이면 축별 극값 대신 [pct, 100-pct] 백분위를 쓴다. 극값은 점 1개로 결정되어
+    프레임 간 잡음이 크고(실측: 프레임간 z 변동 p90 1.62배), 그 잡음이 크기 게이트에
+    그대로 실려 정상 프레임을 기각시킨다. 백분위는 박스 자체를 안정화한다.
+    """
     if len(pts) < 10:
         return None
-    mn, mx = pts.min(axis=0), pts.max(axis=0)
+    if pct and pct > 0 and len(pts) >= 50:
+        mn = np.percentile(pts, pct, axis=0)
+        mx = np.percentile(pts, 100.0 - pct, axis=0)
+    else:
+        mn, mx = pts.min(axis=0), pts.max(axis=0)
     return Box3D(center=(mn + mx) / 2.0, size=mx - mn,
                  min_xyz=mn, max_xyz=mx, n_points=len(pts))
 

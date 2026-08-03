@@ -34,7 +34,10 @@ os.makedirs(LOGD, exist_ok=True)
 STRIDE = 3
 BC_MAX_FRAMES = 220          # 카메라 4대 x 8태스크라 상한을 둔다
 HE_MAX_FRAMES = 200
-BC_EP = 5
+# 에피소드를 상수로 고정하면 "다른 에피소드에서도 되는가"를 원리적으로 측정할 수 없다.
+# 튜닝은 EP_TUNE에서만 하고, EP_HOLDOUT은 파라미터 결정에 쓰지 않은 채 점수만 매긴다.
+BC_EP = int(os.environ.get("BC_EP", "5"))
+HE_EP_OFFSET = int(os.environ.get("HE_EP_OFFSET", "0"))   # 카테고리 대표 ep에서 몇 번째 뒤
 
 
 def log(msg, tag="review"):
@@ -97,7 +100,7 @@ def frames_he(ep, stride=STRIDE, cap_n=HE_MAX_FRAMES):
 def run_one(outdir, seq, prompt, targets, det, seg, dep, is_he):
     """한 (에피소드 x 카메라) 처리. A/B 영상 2편 + 비교 이미지 + 통계 저장."""
     os.makedirs(outdir, exist_ok=True)
-    trk = EpisodeTracker(targets, det, seg, prompt)
+    trk = EpisodeTracker(targets, det, seg, prompt, fps=30.0 / STRIDE)
     H, W = seq[0][0].shape[:2]
     fps = 30.0 / STRIDE
     vA = cv2.VideoWriter(f"{outdir}/A_visible.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (W, H))
@@ -136,7 +139,7 @@ def run_one(outdir, seq, prompt, targets, det, seg, dep, is_he):
         cv2.imwrite(f"{outdir}/AB_occluded.png", snap_occ)
     st = trk.stats(len(seq))
     json.dump(recs, open(f"{outdir}/frames.json", "w"), ensure_ascii=False, default=str)
-    json.dump(dict(prompt=prompt, n_frames=len(seq), fps=fps, stats=st),
+    json.dump(dict(prompt=trk.prompt, n_frames=len(seq), fps=fps, stride=STRIDE, stats=st),
               open(f"{outdir}/stats.json", "w"), ensure_ascii=False, indent=1, default=str)
     return st
 
@@ -167,7 +170,8 @@ def main():
 
     t_all = time.time(); nfr = 0
     for name, cam, spec in jobs:
-        base = f"{REVIEW}/{rnd}/{'brainco' if kind=='bc' else 'he'}/{name}"
+        epn = BC_EP if kind == "bc" else (spec["ep"] + HE_EP_OFFSET)
+        base = f"{REVIEW}/{rnd}/{'brainco' if kind=='bc' else 'he'}/{name}_ep{epn}"
         outdir = f"{base}/{cam}" if kind == "bc" else base
         if os.path.exists(f"{outdir}/stats.json"):
             log(f"  건너뜀(완료) {name}/{cam}", tag); continue
@@ -179,7 +183,7 @@ def main():
                     log(f"  프레임 없음 {name}/{cam}", tag); continue
                 seq = [(cv2.imread(f), None) for f in files]
             else:
-                seq = frames_he(spec["ep"])
+                seq = frames_he(spec["ep"] + HE_EP_OFFSET)
                 tmp = None
                 if not seq:
                     log(f"  프레임 없음 {name}", tag); continue

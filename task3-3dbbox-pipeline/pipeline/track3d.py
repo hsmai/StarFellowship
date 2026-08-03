@@ -1,31 +1,57 @@
-"""V2 공통 모듈 — 검출 끊김·박스 튐 문제를 잡기 위한 추적 + 3중 검증 게이트.
+"""추적 + 검증 게이트 + 3D box 2가지 방식 (V4).
 
-기존 문제 (A_track 진단 결과):
-  - 프레임 독립 검출: 로봇이 물체를 옮길 때 검출이 끊김 (오레오 52%)
-  - 단순 박스 전파: 물체는 움직이는데 박스는 고정 -> 배경을 마스크로 잡아 박스 폭발
-    (30cm 초과 폭발 51건 중 50건이 박스 전파 프레임)
+## 라운드1에서 드러난 공통 뿌리
 
-V2 설계:
-  1) 검출 우선. 놓치면 저임계 재검출(이전 위치 근처만 인정) -> SAM 마스크 전파 순.
-  2) 마스크 전파 시 mask -> tight box 로 박스를 매 프레임 갱신 (움직임을 따라감).
-  3) 결과가 어떻든 3중 게이트 통과 못 하면 박스를 그리지 않음 (틀린 박스 > 빈 프레임).
-     G1 크기: 각 변이 이력 중앙값의 2.5배 초과 또는 부피 4배 초과 -> 기각
-     G2 이동: 3D 중심이 직전 대비 0.25m 초과 점프 -> 기각
-     G3 마스크: 박스 대비 채움비 10~98% 벗어남 / 전파 시 depth 중앙값 60~160% 벗어남 -> 기각
-  4) 렌더링은 EMA 스무딩(중심·크기) -> 화면 떨림 제거.
+증상 5가지(head 물체별 편차 / wrist 유령 / wrist 대형물체 침묵 / 옮기는 중 소실 /
+A·B 무차이)는 모두 같은 원인의 다른 단면이었다.
+
+1. **판정 기준이 스케일 가변량이었다.** 화면 면적비 0.12는 카메라-물체 거리에 의존한다.
+   겉보기 면적은 (물체크기·f)²/z²에 비례하므로 head(z≈0.8m)와 wrist(z≈0.2m)에서 같은
+   물체가 100배 차이 난다. 축별 크기 게이트(2.5배/4배)도 회전만으로 √3배 변한다.
+2. **이력이 자기 자신을 오염시켰다.** 게이트는 자기 이력 중앙값과만 비교하는데 승인분을
+   무조건 이력에 넣으니, 가려져 축소된 박스가 중앙값을 끌어내리고 물체가 다시 보일 때
+   정상 박스를 기각했다(실측: 이력 부피가 1020→9cm³로 붕괴한 트랙 존재).
+3. **판정이 이진값이라 복구 경로가 없었다.** 기각되면 amodal이 호출조차 안 돼
+   전체 프레임의 38%가 A·B 모두 빈 화면이었다.
+
+## V4의 대응
+
+- 크기 판정을 **깊이로 정규화한 물리 크기**(미터)와 **회전불변 대각**으로 옮겼다.
+  카메라가 바뀌어도, 물체가 회전해도 같은 기준이 된다.
+- **재투영 자기정합**(3D 박스는 그것을 만든 2D 증거와 맞아야 한다)을 추가했다.
+- **그린다**와 **이력에 넣는다**를 분리했다. 이력 갱신은 관측 품질이 좋을 때만.
+- 트랙을 **confirmed/coasting** 2상태로 두고, coasting 구간은 방식 B가 채운다.
+  방식 A의 렌더 조건은 건드리지 않아 보수적 결과가 그대로 남는다.
+- 가려짐 판정을 '부피가 줄었다'(잡음)에서 **가림의 물리적 증거**(손 마스크 겹침,
+  물체보다 앞선 픽셀 비율)로 교체했다.
 """
 import numpy as np
 import cv2
 
-from geometry import (Intrinsics, backproject, filter_points, fit_box3d,
-                      draw_box3d, align_mask_to_depth, largest_component, cluster_depth)
+from geometry import (Intrinsics, backproject, filter_points, fit_box3d, draw_box3d,
+                      align_mask_to_depth, largest_component, cluster_depth,
+                      check_reprojection)
 
-# 조작 대상 물체의 상식적 상한(m). 사람이 한 손으로 드는 물체라 이보다 크면 배경 혼입이다.
-# plate처럼 넓은 물체를 위해 라벨별 예외를 둔다.
-MAX_SIZE_DEFAULT = 0.35
-MAX_SIZE_BY_LABEL = {"plate": 0.45, "doll": 0.45, "container": 0.60, "person": 2.2,
-                     "desk": 2.0, "table": 2.0, "monitor": 0.8, "whiteboard": 1.5,
-                     "chair": 1.2, "laptop": 0.6, "bag": 0.6, "box": 0.6}
+# --- 전역 안전판 (라벨·태스크·카메라 무관) -----------------------------------
+MAX_PHYS_SIZE = 0.75      # m. 후보 2D 박스가 그 깊이에서 가리키는 물리 폭 상한.
+                          # 면적비와 달리 거리에 불변이라 head/wrist에 같은 값을 쓴다.
+                          # 0.5m로 두면 펼친 수건(실측 0.65~0.71m)이 잘린다. 로봇 팔
+                          # 오검출은 이 값이 아니라 아래 DISTRACTOR 겹침 배제가 막는다.
+AREA_SAFETY = 0.60        # 화면 점유율 상한. 정체성 판별이 아니라 '화면을 통째로 잡았다'는
+                          # 축퇴 상태만 걸러내는 최후 안전판.
+MAX_SIZE_GLOBAL = 0.80    # m. 3D 박스 최대 변 (전역 안전판). head 라운드1 기각 0건.
+DIST_IOU_MAX = 0.75       # 손/팔 후보와 이만큼 겹치는 target 후보는 배제.
+                          # 손에 쥔 물체는 부분적으로만 겹치므로(IoU<0.5) 살아남고,
+                          # '팔 전체를 물체로 오인'한 후보만 걸린다. 거리·면적에 무관.
+DIAG_UP = 2.0             # 대각이 이력 중앙값의 2배 초과면 기각 (회전불변)
+DIAG_LO = 0.5             # 하한은 기각이 아니라 '이력 미갱신'으로만 쓴다 (아래 참조)
+RX_BAND = (0.40, 1.80)    # 재투영 가로 스케일 허용 범위
+RY_BAND = (0.30, 2.20)    # 세로는 물체가 박스 상하단까지 안 차는 경우가 많아 더 넓게
+
+# 모든 태스크·데이터셋에 공통으로 붙이는 방해물 어휘.
+# 로봇 손/사람 손은 Unitree G1 데이터에 항상 존재하는 물리적 상수라 태스크 지식이 아니다.
+# 이 트랙이 있어야 (1) 검출기가 손을 target으로 흡수하지 않고 (2) 가림 판정에 손 마스크를 쓴다.
+DISTRACTORS = ["robot hand", "robot arm", "gripper", "human hand"]
 
 
 def iou2d(a, b):
@@ -46,7 +72,6 @@ def inflate(box, ratio, W, H):
 
 
 def clip_mask_to_box(mask, box, ratio=1.15):
-    """마스크를 검출 박스 주변으로 제한 — 케이블 등 길게 이어진 배경 유입 차단"""
     H, W = mask.shape
     x1, y1, x2, y2 = [int(v) for v in inflate(box, ratio, W, H)]
     out = np.zeros_like(mask)
@@ -54,247 +79,490 @@ def clip_mask_to_box(mask, box, ratio=1.15):
     return out
 
 
-class Track:
-    """라벨 1개의 시간축 상태. 게이트 통과분만 이력에 반영한다."""
-    MAX_MISS = 25          # 이 프레임 수 이상 실패하면 트랙 리셋(신규 고신뢰 검출 대기)
+def phys_width(box2d, z, K):
+    """2D 박스가 깊이 z에서 가리키는 물리 폭·높이(m). 거리에 불변한 크기 척도."""
+    x1, y1, x2, y2 = box2d
+    return (x2 - x1) * z / max(K.fx, 1e-6), (y2 - y1) * z / max(K.fy, 1e-6)
 
-    def __init__(self, label, is_target=False, max_area_ratio=0.12):
+
+class Track:
+    """라벨 1개의 시간축 상태.
+
+    핵심 설계: '그린다'(accepted)와 '이력에 넣는다'(update_history)를 분리한다.
+    게이트가 자기 이력과 비교하는 구조에서 이력을 무비판적으로 갱신하면
+    가려진 박스가 기준을 끌어내려 정상 박스를 기각하는 양의 피드백이 생긴다.
+    """
+    HIST = 30
+
+    def __init__(self, label, is_target=False, fps=10.0):
         self.label = label
-        self.is_target = is_target      # 태스크의 주 조작 대상인가
-        self.max_area_ratio = max_area_ratio   # 2D 박스가 화면에서 차지할 수 있는 최대 비율
-        self.sizes = []            # 최근 승인된 size 목록 (최대 30)
-        self.center = None         # 마지막 승인 3D 중심
-        self.box2d = None          # 마지막 승인 2D 박스
-        self.depth_med = None      # 마지막 승인 전경 depth 중앙값
-        self.ema_c = None
-        self.ema_s = None
+        self.is_target = is_target
+        self.fps = fps
+        self.sizes = []          # 자격을 통과한 관측만 쌓인다
+        self.areas = []          # mask_px * depth^2 — 거리 보정된 겉보기 크기
+        self.center = None
+        self.prev_center = None
+        self.box2d = None
+        self.depth_med = None
+        self.ema_c = self.ema_s = None          # 방식 A 렌더용
+        self.ema_c_b = self.ema_s_b = None      # 방식 B 렌더용 (A와 같은 필터)
         self.miss = 0
         self.n_acc = self.n_rej = 0
-        self.n_occluded = 0        # 방식 B에서 가려짐으로 판정한 프레임 수
+        self.n_occluded = self.n_coast = 0
+        # confirmed: 고임계 det이 짧은 창 안에 2회(또는 det 1회 + 정합 redet 3회) 나와야 True.
+        # 이 조건 전에는 저임계 재검출/전파를 쓰지 않는다 -> '물체가 보인 적 없는 손'의 유령 차단.
+        self.confirmed = False
+        self._det_hits = []      # (frame_idx, center) 최근 고임계 det
+        self._redet_hits = []
+        self.frames_since_det = 0
+        self.det_gaps = []       # det 간격 실측 — 하드컷을 상수로 두지 않기 위해
 
+    # ---- 이력 조회
     def med_size(self):
         return np.median(np.array(self.sizes), axis=0) if self.sizes else None
 
-    def max_size(self):
-        for k, v in MAX_SIZE_BY_LABEL.items():
-            if k in self.label:
-                return v
-        return MAX_SIZE_DEFAULT
-
-    def gate(self, b, mask, box2d, propagated, dmed):
-        """4중 게이트. 반환 (통과여부, 사유)"""
-        if np.max(b.size) > self.max_size():        # 절대 상한 — 이력 없이도 즉시 기각
-            return False, f"absmax>{self.max_size():.2f}m"
-        x1, y1, x2, y2 = box2d
-        barea = max((x2 - x1) * (y2 - y1), 1.0)
-        fill = mask.sum() / barea
-        if not (0.10 <= fill <= 0.98):
-            return False, f"fill={fill:.2f}"
+    def med_diag(self):
         ms = self.med_size()
-        if ms is not None and len(self.sizes) >= 3:
-            if np.any(np.array(b.size) > 2.5 * ms + 0.05):
-                return False, "size>2.5x"
-            if np.prod(b.size) > 4.0 * np.prod(ms) + 1e-6:
-                return False, "vol>4x"
-        if self.center is not None and self.miss < 5:
-            if np.linalg.norm(np.array(b.center) - self.center) > 0.25:
-                return False, "jump>0.25m"
-        if propagated and self.depth_med is not None and dmed is not None:
-            if not (0.6 * self.depth_med <= dmed <= 1.6 * self.depth_med):
-                return False, "depth_shift"
-        return True, ""
+        return float(np.linalg.norm(ms)) if ms is not None else None
 
-    def accept(self, b, box2d, dmed):
-        self.sizes.append(np.array(b.size)); self.sizes = self.sizes[-30:]
+    def med_area(self):
+        return float(np.median(self.areas)) if self.areas else None
+
+    def det_budget(self):
+        """det 없이 버틸 프레임 수. 상수가 아니라 이 트랙이 실측한 det 간격에서 유도한다.
+        (라운드1에서 고정 3초를 걸었다면 정상 동작하던 head 9/16 에피소드가 잘렸다)"""
+        if len(self.det_gaps) >= 3:
+            return max(int(3.0 * float(np.median(self.det_gaps))), int(4.0 * self.fps))
+        return int(8.0 * self.fps)
+
+    # ---- 게이트
+    def gate(self, b, mask, box2d, K, WH, src):
+        """반환 (통과, 사유, 진단dict). 하드 기각은 물리적으로 불가능한 것만."""
+        W, H = WH
+        diag = {}
+        du, dv, rx, ry, inside = check_reprojection(b, box2d, K, 0)
+        diag.update(du=round(du, 1), dv=round(dv, 1), rx=round(rx, 3), ry=round(ry, 3))
+
+        barea = max((box2d[2] - box2d[0]) * (box2d[3] - box2d[1]), 1.0)
+        diag["area_ratio"] = round(barea / (W * H), 4)
+        if barea > AREA_SAFETY * W * H:
+            return False, f"area>{barea/(W*H):.2f}", diag
+
+        if np.max(b.size) > MAX_SIZE_GLOBAL:
+            return False, f"absmax>{MAX_SIZE_GLOBAL}", diag
+
+        if not inside:                       # 3D 중심이 자기 2D 증거 밖 = 다른 것을 잡았다
+            return False, "reproj", diag
+
+        fill = mask.sum() / barea
+        diag["fill"] = round(float(fill), 3)
+        if fill > 0.995:                     # 마스크가 박스를 통째로 채움 = 배경 락온
+            return False, f"fill={fill:.2f}", diag
+
+        dm = self.med_diag()
+        d = float(np.linalg.norm(b.size))
+        diag["diag"] = round(d, 4)
+        if dm is not None and len(self.sizes) >= 5:
+            diag["d_over_dm"] = round(d / max(dm, 1e-9), 3)
+            if d > DIAG_UP * dm:             # 회전불변 상한 (축별 게이트는 회전을 오차로 오인)
+                return False, f"diag>{DIAG_UP}x", diag
+            # 하한(d < dm/2)은 기각하지 않는다 — 라운드1 실측상 이 조건에 걸리는 프레임은
+            # 100%가 가려짐 구간이었다. 기각하면 '옮기는 중 소실'을 더 악화시킨다.
+            # 대신 이력 갱신 자격에서만 제외한다(update_ok 참조).
+        return True, "", diag
+
+    def update_ok(self, src, occ, diag, n_points, WH):
+        """이 관측이 '기준'이 될 자격이 있는가. 렌더링과 무관하게 이력 오염만 막는다."""
+        if src not in ("det", "redet"):
+            return False
+        if occ:
+            return False
+        rx, ry = diag.get("rx", 0), diag.get("ry", 0)
+        if not (RX_BAND[0] <= rx <= RX_BAND[1] and RY_BAND[0] <= ry <= RY_BAND[1]):
+            return False
+        W, H = WH
+        if n_points < max(30, 0.00015 * W * H):
+            return False
+        r = diag.get("d_over_dm")
+        if r is not None and not (0.7 <= r <= 1.4):
+            return False
+        return True
+
+    def accept(self, b, box2d, dmed, area_px, update_history, src, fidx):
+        if update_history:
+            self.sizes.append(np.array(b.size)); self.sizes = self.sizes[-self.HIST:]
+            if area_px is not None:
+                self.areas.append(area_px); self.areas = self.areas[-self.HIST:]
+            if dmed is not None:
+                self.depth_med = dmed
+        self.prev_center = self.center
         self.center = np.array(b.center)
         self.box2d = list(box2d)
-        if dmed is not None:
-            self.depth_med = dmed
         a = 0.45
         self.ema_c = self.center if self.ema_c is None else (1 - a) * self.ema_c + a * self.center
-        self.ema_s = np.array(b.size) if self.ema_s is None else (1 - a) * self.ema_s + a * np.array(b.size)
-        self.miss = 0; self.n_acc += 1
+        s = np.array(b.size)
+        self.ema_s = s if self.ema_s is None else (1 - a) * self.ema_s + a * s
+        self.miss = 0
+        self.n_acc += 1
+        if src == "det":
+            if self.frames_since_det > 0:
+                self.det_gaps.append(self.frames_since_det)
+            self.frames_since_det = 0
+        else:
+            self.frames_since_det += 1
 
-    def amodal(self, b):
-        """방식 B — 가려짐 보정 박스.
+    def reject(self):
+        self.miss += 1
+        self.n_rej += 1
+        self.frames_since_det += 1
+        if self.miss > self.det_budget():
+            # 완전 리셋하되 크기 기준 1개는 시드로 남긴다 — 전부 비우면 게이트가
+            # 무방비 상태가 되어 틀린 물체가 새 기준으로 자리잡는다.
+            seed = self.med_size()
+            self.box2d = None; self.center = None; self.prev_center = None
+            self.sizes = [seed] if seed is not None else []
+            self.areas = []
+            self.confirmed = False
+            self._det_hits = []; self._redet_hits = []
 
-        로봇 손이 물체를 덮으면 보이는 픽셀이 줄어 박스가 급격히 작아진다. 이때 크기를
-        이력 중앙값으로 되돌리고, 보이는 부분의 위치를 기준으로 물체 전체 범위를 추정한다.
-        반환 (center, size, occluded, ratio)
-        """
+    def note_det(self, fidx, center3d, src):
+        """confirmed 판정용 관측 기록. det 2회 또는 det 1회 + 정합 redet 3회."""
+        win = int(1.5 * self.fps)
+        if src == "det":
+            self._det_hits.append((fidx, np.array(center3d)))
+            self._det_hits = [h for h in self._det_hits if fidx - h[0] <= win]
+        elif src == "redet":
+            self._redet_hits.append((fidx, np.array(center3d)))
+            self._redet_hits = [h for h in self._redet_hits if fidx - h[0] <= win]
+        if self.confirmed:
+            return
+        def agree(hits, k):
+            if len(hits) < k:
+                return False
+            c = np.array([h[1] for h in hits[-k:]])
+            return float(np.max(np.linalg.norm(c - c.mean(axis=0), axis=1))) <= 0.15
+        if agree(self._det_hits, 2):
+            self.confirmed = True
+        elif len(self._det_hits) >= 1 and agree(self._redet_hits, 3):
+            # HE Articulated처럼 에피소드 전체에서 고임계 det이 1회뿐인 경우를 위한 경로.
+            self.confirmed = True
+
+    def coast(self, mask_center_3d):
+        """방식 B 전용 — 관측이 끊긴 구간을 이력 크기 + 위치 추정으로 채운다."""
         ms = self.med_size()
-        cur = np.array(b.size)
-        cen = np.array(b.center)
-        if ms is None or len(self.sizes) < 5:
-            return cen, cur, False, 1.0
-        ratio = float(np.prod(cur) / max(np.prod(ms), 1e-9))
-        if ratio >= 0.55:                       # 충분히 보임 — 방식 A와 동일
-            return cen, cur, False, ratio
-        # 가려짐: 크기는 이력 중앙값, 중심은 보이는 부분을 감싸도록 최소 이동
+        if ms is None or self.center is None:
+            return None
+        if mask_center_3d is not None:
+            c = np.array(mask_center_3d)
+        elif self.prev_center is not None:
+            c = self.center + (self.center - self.prev_center)   # 등속 외삽
+        else:
+            c = self.center.copy()
+        self.n_coast += 1
+        return c, ms.copy()
+
+    def amodal(self, b, occ):
+        """방식 B — 가려짐이 확인된 동안 크기를 이력값으로 되돌린다.
+        판정(occ)은 밖에서 물리적 증거로 내리고, 여기서는 복원만 한다."""
+        cen, cur = np.array(b.center), np.array(b.size)
+        ms = self.med_size()
+        if not occ or ms is None or len(self.sizes) < 5:
+            return cen, cur
         size = ms.copy()
         vmin, vmax = cen - cur / 2, cen + cur / 2
         new_c = cen.copy()
-        for i in range(3):                      # 보이는 조각이 박스 안에 들어오게 축별 보정
+        for i in range(3):                    # 보이는 조각이 박스 안에 들어오도록 최소 이동
             lo, hi = new_c[i] - size[i] / 2, new_c[i] + size[i] / 2
             if vmin[i] < lo:
                 new_c[i] -= (lo - vmin[i])
             elif vmax[i] > hi:
                 new_c[i] += (vmax[i] - hi)
-        self.n_occluded += 1
-        return new_c, size, True, ratio
+        return new_c, size
 
-    def reject(self):
-        self.miss += 1; self.n_rej += 1
-        if self.miss > self.MAX_MISS:      # 오래 놓치면 과거 위치를 믿지 않음
-            self.box2d = None; self.center = None; self.depth_med = None
+    def ema_b(self, c, s):
+        a = 0.45
+        self.ema_c_b = c if self.ema_c_b is None else (1 - a) * self.ema_c_b + a * c
+        self.ema_s_b = s if self.ema_s_b is None else (1 - a) * self.ema_s_b + a * s
+        return self.ema_c_b, self.ema_s_b
 
 
 class EpisodeTracker:
     """에피소드 1개 처리기.
-    targets = {짧은키: 표시라벨}  또는  {짧은키: (표시라벨, is_target)}
-    is_target=True 인 라벨이 태스크의 주 조작 대상이며, 2D 면적 상한이 더 엄격하게 걸린다.
+    targets = {매칭키: 표시라벨} 또는 {매칭키: (표시라벨, is_target)}
+    프롬프트에는 DISTRACTORS가 자동으로 붙고, 그 트랙은 가림 판정에 쓰인다.
     """
 
-    def __init__(self, targets, det, seg, prompt, low_thr=0.20):
-        self.targets = {}
-        self.tracks = {}
+    def __init__(self, targets, det, seg, prompt, low_thr=0.20, fps=10.0):
+        # 여러 매칭키가 같은 표시라벨을 가리키면(rose/flower/bouquet) 한 트랙으로 묶는다.
+        # 묶지 않으면 같은 물체에 박스가 겹쳐 그려지고 통계도 중복된다.
+        self.targets, self.tracks, self.key_alias = {}, {}, {}
         for k, v in targets.items():
-            if isinstance(v, (list, tuple)):
-                label, is_tgt = v[0], bool(v[1])
+            label, is_tgt = (v[0], bool(v[1])) if isinstance(v, (list, tuple)) else (v, False)
+            prim = next((kk for kk, ll in self.targets.items() if ll == label), None)
+            if prim is None:
+                self.targets[k] = label
+                self.tracks[k] = Track(label, is_target=is_tgt, fps=fps)
+                self.key_alias[k] = k
             else:
-                label, is_tgt = v, False
-            self.targets[k] = label
-            # 주 조작 대상은 사람이 한 손으로 드는 물체라 화면의 12%를 넘지 않는다.
-            # (PickCharger 실측: 오검출 박스 50,482px = 화면 16%, 정상 접시 9,137px = 3%)
-            self.tracks[k] = Track(label, is_target=is_tgt,
-                                   max_area_ratio=0.12 if is_tgt else 0.45)
-        self.det, self.seg, self.prompt = det, seg, prompt
+                self.key_alias[k] = prim
+        # 방해물 트랙 (렌더링하지 않음. 가림 판정과 검출 분리용)
+        self.distractor_keys = []
+        for d in DISTRACTORS:
+            k = d.split()[-1] if d != "robot arm" else "arm"
+            if k in self.tracks or k in self.key_alias:
+                continue
+            self.key_alias[k] = k
+            self.distractor_keys.append(k)
+            self.tracks[k] = Track(d, is_target=False, fps=fps)
+        base = prompt.rstrip().rstrip(".").strip()
+        self.prompt = " . ".join([base] + DISTRACTORS) + " ."
+        self.det, self.seg = det, seg
         self.low_thr = low_thr
+        self.fps = fps
+        self.fidx = -1
 
-    def _match(self, key, boxes, phrases, scores, WH):
-        """검출 결과에서 key 토큰이 포함된 후보 중 최적 1개 (score + 이전 IoU 가중).
-        화면 대비 과대한 박스는 후보에서 제외한다 — 오검출(로봇 팔 전체 등) 차단."""
+    def _match(self, key, boxes, phrases, scores, WH, K, depth, dscale, dist_boxes=()):
+        """후보 중 최적 1개. 배제 기준은 화면 면적비가 아니라 **깊이 정규화 물리 크기**다.
+        면적비는 카메라 거리에 의존해 head/wrist에서 100배 차이 나지만, 물리 크기는
+        거리에 불변이라 같은 상한을 모든 카메라에 쓸 수 있다."""
         tr = self.tracks[key]
         W, H = WH
-        area_cap = tr.max_area_ratio * W * H
-        best, bs = None, -1
+        aliases = [k for k, prim in self.key_alias.items() if prim == key] or [key]
+        best, bs, rej = None, -1, None
         for b, p, s in zip(boxes, phrases, scores):
-            if key not in str(p):
+            if not any(a in str(p) for a in aliases):
                 continue
-            if (b[2] - b[0]) * (b[3] - b[1]) > area_cap:      # 과대 박스 배제
-                continue
+            barea = (b[2] - b[0]) * (b[3] - b[1])
+            if barea > AREA_SAFETY * W * H:
+                rej = "area"; continue
+            if tr.is_target and dist_boxes:
+                if max((iou2d(b, db) for db in dist_boxes), default=0.0) > DIST_IOU_MAX:
+                    rej = "overlaps_hand"; continue
+            if tr.is_target:
+                x1, y1, x2, y2 = [int(max(0, v)) for v in b]
+                x2, y2 = min(W, x2), min(H, y2)
+                if x2 > x1 and y2 > y1:
+                    d = depth[y1:y2, x1:x2]
+                    d = d[np.isfinite(d) & (d > 0)]
+                    if d.size > 20:
+                        z = float(np.median(d)) * dscale
+                        pw, ph = phys_width(b, z, K)
+                        if max(pw, ph) > MAX_PHYS_SIZE:
+                            rej = f"phys>{max(pw,ph):.2f}m"; continue
             bonus = 0.3 * iou2d(b, tr.box2d) if tr.box2d is not None else 0.0
             if s + bonus > bs:
-                bs, best = s + bonus, list(map(float, b))
-        return best
+                bs, best = s + bonus, (list(map(float, b)), float(s))
+        return best, rej
 
     def step(self, img, depth, K, dscale, align_dx=0):
-        """1프레임 처리. 반환: [{key,label,box2d,center,size,src,accepted,reason}...]"""
+        self.fidx += 1
         H, W = img.shape[:2]
         boxes, phrases, scores = self.det(img, self.prompt)
-        results = []
-        pend = {}                                    # key -> (box2d, src)
-        missing = []
-        for key in self.targets:
-            b = self._match(key, boxes, phrases, scores, (W, H))
-            if b is not None:
-                pend[key] = (b, "det")
+        results, pend, missing = [], {}, []
+        # 손/팔을 먼저 매칭해 그 영역을 알고 나서 target 후보를 고른다
+        dist_boxes = []
+        for key in self.distractor_keys:
+            m, rej = self._match(key, boxes, phrases, scores, (W, H), K, depth, dscale)
+            if m is not None:
+                pend[key] = (m[0], "det", m[1]); dist_boxes.append(m[0])
             else:
-                missing.append(key)
-        # 저임계 재검출 (놓친 라벨이 있고 이전 위치를 알 때만 1회)
-        if missing and any(self.tracks[k].box2d is not None for k in missing):
+                missing.append((key, rej))
+        for key in self.targets:
+            m, rej = self._match(key, boxes, phrases, scores, (W, H), K, depth, dscale, dist_boxes)
+            if m is not None:
+                pend[key] = (m[0], "det", m[1])
+            else:
+                missing.append((key, rej))
+
+        # 저임계 재검출 — confirmed 트랙에만 허용 (유령 차단)
+        need_low = [k for k, _ in missing
+                    if self.tracks[k].confirmed and self.tracks[k].box2d is not None]
+        if need_low:
             old = self.det.box_thr
             self.det.box_thr = self.low_thr
             b2, p2, s2 = self.det(img, self.prompt)
             self.det.box_thr = old
-            for key in list(missing):
+            for key in need_low:
                 tr = self.tracks[key]
-                if tr.box2d is None:
-                    continue
-                cand = None; bi = 0.1
-                for b, p in zip(b2, p2):
-                    if key in str(p) and iou2d(b, tr.box2d) > bi:
-                        bi = iou2d(b, tr.box2d); cand = list(map(float, b))
+                cand, bi, cs = None, 0.15, 0.0
+                for b, p, s in zip(b2, p2, s2):
+                    if key not in str(p):
+                        continue
+                    v = iou2d(b, tr.box2d)
+                    if v > bi:
+                        bi, cand, cs = v, list(map(float, b)), float(s)
                 if cand is not None:
-                    pend[key] = (cand, "redet"); missing.remove(key)
-        # SAM 전파: 이전 박스를 12% 키워 프롬프트로, 마스크 -> tight box 갱신
-        for key in missing:
+                    pend[key] = (cand, "redet", cs)
+                    missing = [(k, r) for k, r in missing if k != key]
+
+        # 마스크 전파 — confirmed 트랙에만
+        for key, _ in list(missing):
             tr = self.tracks[key]
-            if tr.box2d is not None:
-                pend[key] = (inflate(tr.box2d, 1.12, W, H), "prop")
+            if tr.confirmed and tr.box2d is not None:
+                pend[key] = (inflate(tr.box2d, 1.12, W, H), "prop", 0.0)
+                missing = [(k, r) for k, r in missing if k != key]
 
-        if not pend:
-            return results
-        keys = list(pend.keys())
-        bxs = np.array([pend[k][0] for k in keys], dtype=np.float32)
-        masks = self.seg(img, bxs)
+        masks_by_key = {}
+        if pend:
+            keys = list(pend.keys())
+            bxs = np.array([pend[k][0] for k in keys], dtype=np.float32)
+            masks = self.seg(img, bxs)
+            for k, m in zip(keys, masks):
+                masks_by_key[k] = m.astype(bool)
 
-        for k, m in zip(keys, masks):
-            box2d, src = pend[k]
-            tr = self.tracks[k]
-            mk = clip_mask_to_box(m.astype(bool), box2d, 1.15)
-            mk = largest_component(mk)               # 케이블·팔·그림자 등 딸린 덩어리 제거
-            if src == "prop" and mk.sum() > 50:      # 전파면 mask 기준으로 박스 재산출
+        # 방해물(손/팔) 마스크 합집합 — 가림 판정에 쓴다
+        occ_mask = np.zeros((H, W), dtype=bool)
+        for k in self.distractor_keys:
+            if k in masks_by_key:
+                occ_mask |= masks_by_key[k]
+
+        for key in self.targets:
+            tr = self.tracks[key]
+            if key not in pend:
+                rej = dict(missing).get(key)
+                rec = dict(key=key, label=tr.label, src="none", accepted=False,
+                           reason=rej or "no_candidate", frame=self.fidx,
+                           track_state="confirmed" if tr.confirmed else "unconfirmed")
+                cb = tr.coast(None) if tr.confirmed else None
+                if cb is not None:
+                    c, s = tr.ema_b(*cb)
+                    rec.update(accepted_amodal=True, coasting=True,
+                               center_amodal=list(map(float, c)), size_amodal=list(map(float, s)),
+                               conf=round(float(np.exp(-tr.frames_since_det / 8.0)), 3))
+                tr.reject()
+                results.append(rec)
+                continue
+
+            box2d, src, score = pend[key]
+            m = masks_by_key.get(key)
+            mk = clip_mask_to_box(m, box2d, 1.15)
+            mk = largest_component(mk)
+            if src == "prop" and mk.sum() > 50:
                 ys, xs = np.where(mk)
                 box2d = [float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max())]
-            mk = cv2.erode(mk.astype(np.uint8), np.ones((5, 5), np.uint8), 1).astype(bool)
-            mk = align_mask_to_depth(mk, dx=align_dx)
-            pts = filter_points(backproject(depth, K, mk, depth_scale=dscale, valid_range=(0.1, 5.0)),
+            mk_e = cv2.erode(mk.astype(np.uint8), np.ones((5, 5), np.uint8), 1).astype(bool)
+            mk_a = align_mask_to_depth(mk_e, dx=align_dx)
+            mask_px = int(mk_a.sum())
+
+            # --- 가림의 물리적 증거 (부피 감소가 아니라 직접 관측) ---
+            occ_frac = 0.0
+            if mask_px > 0:
+                reg = clip_mask_to_box(np.ones((H, W), bool), box2d, 1.1)
+                inter = float((occ_mask & reg).sum()) / max(float(reg.sum()), 1.0)
+                occ_frac = inter
+                if tr.depth_med is not None:
+                    dz = depth[reg] * dscale
+                    dz = dz[np.isfinite(dz) & (dz > 0)]
+                    if dz.size > 20:
+                        ms = tr.med_size()
+                        # 마진을 상수(3cm)가 아니라 물체 자기 두께의 절반으로 — 두꺼운 물체가
+                        # 자기 앞면 때문에 상시 '가려짐'으로 판정되는 것을 막는다.
+                        marg = max(0.02, 0.5 * float(ms[2])) if ms is not None else 0.03
+                        occ_frac = max(occ_frac, float((dz < tr.depth_med - marg).mean()))
+
+            pts = filter_points(backproject(depth, K, mk_a, depth_scale=dscale,
+                                            valid_range=(0.1, 5.0)),
                                 percentile=(10, 90), foreground_mad=1.5)
-            pts = cluster_depth(pts, gap=0.06)       # 깊이로 분리된 덩어리 중 주 덩어리만
-            b = fit_box3d(pts)
+            pts = cluster_depth(pts, gap=0.06)
+            b = fit_box3d(pts, pct=1.0)
+            dmed = float(np.median(depth[mk_a])) * dscale if mask_px > 0 else None
+            area_px = (mask_px * dmed * dmed) if (dmed and mask_px) else None
+
             if b is None:
+                rec = dict(key=key, label=tr.label, src=src, accepted=False, reason="no_points",
+                           frame=self.fidx, box2d=box2d, mask_px=mask_px, det_score=score,
+                           occluder_frac=round(occ_frac, 3),
+                           track_state="confirmed" if tr.confirmed else "unconfirmed")
+                cb = tr.coast(None) if tr.confirmed else None
+                if cb is not None:
+                    c, s = tr.ema_b(*cb)
+                    rec.update(accepted_amodal=True, coasting=True,
+                               center_amodal=list(map(float, c)), size_amodal=list(map(float, s)),
+                               conf=round(float(np.exp(-tr.frames_since_det / 8.0)), 3))
                 tr.reject()
-                results.append(dict(key=k, label=tr.label, src=src, accepted=False, reason="no_points"))
+                results.append(rec)
                 continue
-            dmed = float(np.median(depth[mk])) * dscale if mk.sum() > 0 else None
-            ok, why = tr.gate(b, mk, box2d, src == "prop", dmed)
+
+            if src == "det":
+                tr.note_det(self.fidx, b.center, "det")
+            elif src == "redet":
+                tr.note_det(self.fidx, b.center, "redet")
+
+            ok, why, diag = tr.gate(b, mk_a, box2d, K, (W, H), src)
+            # 미확정 트랙은 고임계 det만 승인 — '한 번도 제대로 본 적 없는' 유령을 막는다
+            if ok and not tr.confirmed and src != "det":
+                ok, why = False, "unconfirmed"
+
+            occ = occ_frac >= 0.25
+            if occ:
+                tr.n_occluded += 1
+
+            rec = dict(key=key, label=tr.label, src=src, frame=self.fidx, box2d=box2d,
+                       det_score=round(float(score), 3), mask_px=mask_px,
+                       n_points=int(b.n_points), raw_size=list(map(float, b.size)),
+                       dmed=None if dmed is None else round(dmed, 4),
+                       occluder_frac=round(occ_frac, 3), occluded=bool(occ),
+                       track_state="confirmed" if tr.confirmed else "unconfirmed", **diag)
+
             if ok:
-                # 방식 B(가려짐 보정)는 accept 전에 계산해야 이력이 오염되지 않는다
-                cB, sB, occ, ratio = tr.amodal(b)
-                tr.accept(b, box2d, dmed)
-                results.append(dict(
-                    key=k, label=tr.label, src=src, accepted=True, reason="", box2d=box2d,
-                    # 방식 A — 보이는 부분만 (EMA 스무딩 적용)
-                    center=list(map(float, tr.ema_c)), size=list(map(float, tr.ema_s)),
-                    # 방식 B — 가려짐 보정
-                    center_amodal=list(map(float, cB)), size_amodal=list(map(float, sB)),
-                    occluded=bool(occ), visible_ratio=round(float(ratio), 3),
-                    raw_size=list(map(float, b.size)), n_points=int(b.n_points), _b=b))
+                upd = tr.update_ok(src, occ, diag, b.n_points, (W, H))
+                cB, sB = tr.amodal(b, occ)
+                tr.accept(b, box2d, dmed, area_px, upd, src, self.fidx)
+                cBe, sBe = tr.ema_b(cB, sB)
+                rec.update(accepted=True, reason="", updated_history=bool(upd),
+                           center=list(map(float, tr.ema_c)), size=list(map(float, tr.ema_s)),
+                           center_amodal=list(map(float, cBe)), size_amodal=list(map(float, sBe)),
+                           accepted_amodal=True, coasting=False, conf=1.0)
             else:
+                cb = tr.coast(np.array(b.center)) if tr.confirmed else None
                 tr.reject()
-                results.append(dict(key=k, label=tr.label, src=src, accepted=False, reason=why))
+                rec.update(accepted=False, reason=why)
+                if cb is not None:
+                    c, s = tr.ema_b(*cb)
+                    rec.update(accepted_amodal=True, coasting=True,
+                               center_amodal=list(map(float, c)), size_amodal=list(map(float, s)),
+                               conf=round(float(np.exp(-tr.frames_since_det / 8.0)), 3))
+            results.append(rec)
         return results
 
     def draw(self, vis, results, K, mode="A"):
-        """mode='A' 보이는 부분만 / 'B' 가려짐 보정."""
+        """mode='A' 관측된 것만 / 'B' coasting·가림보정 포함."""
         from geometry import Box3D
-        pal = {"det": (0, 220, 120), "redet": (0, 200, 255), "prop": (255, 160, 40)}
+        pal = {"det": (0, 220, 120), "redet": (0, 200, 255), "prop": (255, 160, 40),
+               "none": (255, 160, 40)}
         for r in results:
-            if not r.get("accepted"):
-                continue
-            raw = r.get("_b")
             if mode == "B":
+                if not r.get("accepted_amodal"):
+                    continue
                 c, s = np.array(r["center_amodal"]), np.array(r["size_amodal"])
-                col = (60, 120, 255) if r.get("occluded") else pal[r["src"]]
-                tag = " (가림보정)" if r.get("occluded") else ""
+                conf = float(r.get("conf", 1.0))
+                col = (60, 120, 255) if (r.get("coasting") or r.get("occluded")) else pal[r["src"]]
+                th = 2 if conf >= 0.6 else 1
+                tag = " (추정)" if r.get("coasting") else (" (가림보정)" if r.get("occluded") else "")
             else:
+                if not r.get("accepted"):
+                    continue
                 c, s = np.array(r["center"]), np.array(r["size"])
-                col, tag = pal[r["src"]], ""
+                col, th, tag = pal[r["src"]], 2, ""
             b = Box3D(center=c, size=s, min_xyz=c - s / 2, max_xyz=c + s / 2,
-                      n_points=raw.n_points if raw is not None else 0)
-            draw_box3d(vis, b, K, color=col, thickness=2,
+                      n_points=int(r.get("n_points", 0)))
+            draw_box3d(vis, b, K, color=col, thickness=th,
                        label=f"{r['label']} {s[0]*100:.0f}x{s[1]*100:.0f}x{s[2]*100:.0f}cm{tag}")
         return vis
 
     def stats(self, n_frames):
         out = {}
         for k, tr in self.tracks.items():
+            if k in self.distractor_keys:
+                continue
             ms = tr.med_size()
             out[tr.label] = dict(
-                is_target=tr.is_target,
+                is_target=tr.is_target, confirmed=tr.confirmed,
                 accepted=tr.n_acc, rejected=tr.n_rej,
                 coverage=round(tr.n_acc / max(n_frames, 1), 3),
+                coasting_frames=tr.n_coast,
+                coverage_B=round((tr.n_acc + tr.n_coast) / max(n_frames, 1), 3),
                 occluded_frames=tr.n_occluded,
+                n_history=len(tr.sizes),
                 size_median=None if ms is None else [round(float(x), 4) for x in ms])
         return out
