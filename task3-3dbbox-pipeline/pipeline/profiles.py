@@ -74,6 +74,27 @@ class Profile:
     """target 후보의 물리 폭 상한(m). 화면을 채우는 근접 촬영에서도 유효하도록
     거리로 정규화된 값이다."""
 
+    area_max: float = 0.60
+    """2D 박스가 화면에서 차지할 수 있는 최대 비율. 근접 촬영(손목 카메라)에서는
+    정상 물체도 화면을 채우므로 태스크별로 올려야 한다.
+    실측: PickApple 집는 쪽 손목에서 사과의 화면 점유율이 최대 0.627이라
+    0.60 임계에 1~3%p 차이로 걸려 56프레임이 통째로 죽었다."""
+
+    size_prior: tuple = ()
+    """물체의 알려진 실제 치수(m). 이력이 비어 있는 초반에 크기 게이트가 무력해지는
+    것을 막는 시드다. 얇은 물체나 오검출이 잦은 태스크에 쓴다."""
+
+    prior_n: int = 5
+    """size_prior를 이력에 몇 개 넣을지."""
+
+    shrink_lo: float = 0.0
+    """전파 프레임에서 박스가 이력 대각의 이 비율보다 작아지면 기각(0=비활성).
+    전파가 자기를 먹으며 붕괴하는 유령의 주 형태를 막는다."""
+
+    cold_start_hist: int = 0
+    """이력이 빈 초반에 고임계 검출 관측을 가림 여부와 무관하게 이력에 넣을 개수(0=비활성).
+    가림 판정이 과민할 때 이력이 굶어 방식 B의 크기가 작아지는 것을 막는다."""
+
     exclusive_tracks: bool = False
     """한 프레임에서 두 target이 같은 2D 박스를 쓰지 못하게 한다.
     'target이 사라지면 비슷한 다른 물체로 옮겨 붙는' 실패를 막는다
@@ -119,10 +140,30 @@ _BASE = {"R2": R2, "R3": R3, "R4": R4}
 
 # 태스크 고유 보완 — 위 기준선 위에 덧붙인다. 다른 태스크에는 영향이 없다.
 TASK_OVERRIDE = {
-    # 얇고 긴 물체(15x4x3cm)라 5x5 침식이 마스크를 지운다. 최소 점 수도 낮춘다.
-    "PickToothpaste": dict(erode_kernel=3, min_points=8),
+    # 집는 쪽 손목에서 사과가 화면을 채울 때(점유율 최대 0.627) 면적 상한 0.60에
+    # 걸려 56프레임이 죽었다. 기각분의 검출 점수 0.827·재투영 정합 모두 정상이었다.
+    "PickApple": dict(area_max=0.75),
+
+    # 로봇 전완이 "white charger"로 검출되고 점수가 진짜 charger와 겹친다(0.388 vs 0.369).
+    # 후보가 하나라도 잡히면 재검출·전파 경로가 열리지 않아 팔이 슬롯을 빼앗는다.
+    # charger는 손에 들어가는 작은 물체이므로 물리 크기 상한으로 팔을 배제한다.
+    "PickCharger": dict(max_phys_size=0.15, anchor_prop=True),
+
+    # 얇고 긴 물체(15x4x3cm)라 5x5 침식이 마스크를 지운다. 실제 치수를 이력 시드로 주고,
+    # 전파가 붕괴하면 기각한다.
+    "PickToothpaste": dict(erode_kernel=3, min_points=8,
+                           size_prior=(0.15, 0.04, 0.03), prior_n=5,
+                           shrink_lo=0.45, anchor_prop=True),
+
+    # 노트북이 닫힌 뒤 박스가 작아진다 — 점군 필터만 완화해 얇아진 형상을 살린다.
+    # (components는 r2의 'largest' 유지 — r3 전체를 가져오지 않는다)
+    "Articulated": dict(filter_pct=(2.0, 98.0), filter_mad=3.0),
+
+    # pink toy 이동 구간 보완. 이력이 얕을 때 시드를 확보한다.
+    "Basic": dict(cold_start_hist=5),
+
     # 장미가 시야를 벗어나면 꽃병으로 옮겨 붙는다 — 트랙 간 박스 독점으로 막는다.
-    "Precision":      dict(exclusive_tracks=True),
+    "Precision": dict(exclusive_tracks=True),
 }
 
 

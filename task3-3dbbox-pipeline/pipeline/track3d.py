@@ -95,7 +95,8 @@ class Track:
     """
     HIST = 30
 
-    def __init__(self, label, is_target=False, fps=10.0):
+    def __init__(self, label, is_target=False, fps=10.0, prof=None):
+        self.prof = prof
         self.label = label
         self.is_target = is_target
         self.fps = fps
@@ -117,6 +118,12 @@ class Track:
         self._redet_hits = []
         self.frames_since_det = 0
         self.det_gaps = []       # det 간격 실측 — 하드컷을 상수로 두지 않기 위해
+        self.anchor_box2d = None      # 전파 창의 기준 (프로파일 anchor_prop용)
+        self.frames_since_evi = 0
+        if prof is not None and getattr(prof, 'size_prior', None) and is_target:
+            # 알려진 실제 치수를 이력 시드로 넣는다. 이력이 빈 초반에 크기 게이트가
+            # 무력해져 엉뚱한 후보(로봇 팔 등)가 기준이 되는 것을 막는다.
+            self.sizes = [np.array(prof.size_prior, dtype=float)] * int(prof.prior_n)
 
     # ---- 이력 조회
     def med_size(self):
@@ -146,7 +153,7 @@ class Track:
 
         barea = max((box2d[2] - box2d[0]) * (box2d[3] - box2d[1]), 1.0)
         diag["area_ratio"] = round(barea / (W * H), 4)
-        if barea > AREA_SAFETY * W * H:
+        if barea > (self.prof.area_max if self.prof else AREA_SAFETY) * W * H:
             return False, f"area>{barea/(W*H):.2f}", diag
 
         if np.max(b.size) > MAX_SIZE_GLOBAL:
@@ -165,6 +172,9 @@ class Track:
         diag["diag"] = round(d, 4)
         if dm is not None and len(self.sizes) >= 5:
             diag["d_over_dm"] = round(d / max(dm, 1e-9), 3)
+            lo = getattr(self.prof, 'shrink_lo', None) if self.prof else None
+            if lo and src == "prop" and d < lo * dm:
+                return False, "prop_shrink", diag   # 전파 박스 붕괴 = 유령
             if d > DIAG_UP * dm:             # 회전불변 상한 (축별 게이트는 회전을 오차로 오인)
                 return False, f"diag>{DIAG_UP}x", diag
             # 하한(d < dm/2)은 기각하지 않는다 — 라운드1 실측상 이 조건에 걸리는 프레임은
@@ -173,6 +183,11 @@ class Track:
         return True, "", diag
 
     def update_ok(self, src, occ, diag, n_points, WH):
+        cs = getattr(self.prof, 'cold_start_hist', 0) if self.prof else 0
+        if cs and src == "det" and len(self.sizes) < cs:
+            # 이력이 빈 초반에는 가림 판정이 과민해도 고임계 검출을 기준으로 받는다.
+            # (이력이 굶으면 이후 크기 게이트와 방식 B가 함께 무너진다)
+            return True
         """이 관측이 '기준'이 될 자격이 있는가. 렌더링과 무관하게 이력 오염만 막는다."""
         if src not in ("det", "redet"):
             return False
@@ -304,7 +319,7 @@ class EpisodeTracker:
             prim = next((kk for kk, ll in self.targets.items() if ll == label), None)
             if prim is None:
                 self.targets[k] = label
-                self.tracks[k] = Track(label, is_target=is_tgt, fps=fps)
+                self.tracks[k] = Track(label, is_target=is_tgt, fps=fps, prof=self.prof)
                 self.key_alias[k] = k
             else:
                 self.key_alias[k] = prim
@@ -316,7 +331,7 @@ class EpisodeTracker:
                 continue
             self.key_alias[k] = k
             self.distractor_keys.append(k)
-            self.tracks[k] = Track(d, is_target=False, fps=fps)
+            self.tracks[k] = Track(d, is_target=False, fps=fps, prof=self.prof)
         base = prompt.rstrip().rstrip(".").strip()
         self.prompt = (" . ".join([base] + DISTRACTORS) + " ."
                        if self.prof.use_distractors else base + " .")
@@ -337,7 +352,7 @@ class EpisodeTracker:
             if not any(a in str(p) for a in aliases):
                 continue
             barea = (b[2] - b[0]) * (b[3] - b[1])
-            if barea > AREA_SAFETY * W * H:
+            if barea > self.prof.area_max * W * H:
                 rej = "area"; continue
             if tr.is_target and dist_boxes:
                 if max((iou2d(b, db) for db in dist_boxes), default=0.0) > DIST_IOU_MAX:
@@ -406,6 +421,17 @@ class EpisodeTracker:
                 pend[key] = (inflate(tr.box2d, 1.12, W, H), "prop", 0.0)
                 missing = [(k, r) for k, r in missing if k != key]
 
+        if self.prof.exclusive_tracks and len(pend) > 1:
+            # 두 target 후보가 사실상 같은 박스를 가리키면 검출 점수가 높은 쪽만 남긴다.
+            # target이 시야를 벗어났을 때 옆의 다른 물체(꽃 -> 꽃병)로 옮겨 붙는 것을 막는다.
+            ranked = sorted(pend.items(), key=lambda kv: -float(kv[1][2]))
+            kept = []
+            for k_, v_ in ranked:
+                if any(iou2d(v_[0], pend[k2][0]) > 0.85 for k2 in kept):
+                    pend.pop(k_, None)
+                else:
+                    kept.append(k_)
+
         masks_by_key = {}
         if pend:
             keys = list(pend.keys())
@@ -471,7 +497,9 @@ class EpisodeTracker:
                                 percentile=self.prof.filter_pct,
                                 foreground_mad=self.prof.filter_mad)
             pts = cluster_depth(pts, gap=0.06)
-            b = fit_box3d(pts, pct=1.0)
+            b = fit_box3d(pts, pct=1.0) if len(pts) >= self.prof.min_points else None
+            size_mir = (mirror_extend_z(b, pts) if (self.prof.mirror_z and b is not None)
+                        else None)
             dmed = float(np.median(depth[mk_a])) * dscale if mask_px > 0 else None
             area_px = (mask_px * dmed * dmed) if (dmed and mask_px) else None
 
