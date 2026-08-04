@@ -21,6 +21,7 @@ ROOT = os.path.expanduser("~/task3")
 sys.path.insert(0, f"{ROOT}/pipeline")
 from geometry import Intrinsics
 from track3d import EpisodeTracker
+from profiles import profile_for, describe
 from spec import BRAINCO, BRAINCO_CAMS, HE_REP
 
 DATA = "/data2/humanoid_dataset_isangmin"
@@ -97,7 +98,7 @@ def frames_he(ep, stride=STRIDE, cap_n=HE_MAX_FRAMES):
 
 
 # ------------------------------------------------------------------ 처리
-def run_one(outdir, seq, prompt, targets, det, seg, dep, is_he):
+def run_one(outdir, seq, prompt, targets, det, seg, dep, is_he, task_name=""):
     """한 (에피소드 x 카메라) 처리. A/B 영상 2편 + 비교 이미지 + 통계 저장."""
     os.makedirs(outdir, exist_ok=True)
     trk = EpisodeTracker(targets, det, seg, prompt, fps=30.0 / STRIDE)
@@ -187,7 +188,9 @@ def main():
                 tmp = None
                 if not seq:
                     log(f"  프레임 없음 {name}", tag); continue
-            st = run_one(outdir, seq, spec["prompt"], spec["targets"], det, seg, dep, kind == "he")
+            st = run_one(outdir, seq, spec["prompt"], spec["targets"], det, seg, dep,
+                         kind == "he", task_name=name)
+            log(f"    프로파일: {describe(name)}", tag)
             nfr += len(seq)
             if tmp:
                 shutil.rmtree(tmp, ignore_errors=True)

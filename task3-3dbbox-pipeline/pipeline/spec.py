@@ -28,12 +28,9 @@ BRAINCO = {
     "PickDoll": dict(
         prompt="stuffed animal toy . plate .",
         targets={"toy": ("doll", True), "plate": ("plate", False)}),
-    # 공식 지시문은 "Pick up the red cup on the table."이지만 영상 실물은
-    # 파란 뚜껑의 투명 물병이다(수집 중 물체가 바뀌고 지시문이 갱신되지 않음).
-    # 지시문 어휘를 그대로 믿으면 안 된다는 사례라, 상위 개념 어휘를 함께 넣는다.
     "PickDrink": dict(
-        prompt="water bottle . clear plastic bottle . red cup . plate .",
-        targets={"bottle": ("bottle", True), "cup": ("bottle", True), "plate": ("plate", False)}),
+        prompt="red cup . plate .",
+        targets={"cup": ("red cup", True), "plate": ("plate", False)}),
     "PickTissues": dict(
         prompt="pack of wet wipes . plate .",
         targets={"wipes": ("tissue pack", True), "plate": ("plate", False)}),

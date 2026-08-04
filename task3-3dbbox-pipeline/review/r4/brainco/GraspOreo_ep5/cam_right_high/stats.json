@@ -1,0 +1,58 @@
+{
+ "prompt": "oreo snack package . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "oreo": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 159,
+   "rejected": 61,
+   "coverage": 0.723,
+   "coverage_det": 0.573,
+   "prop_accepted": 33,
+   "ghost_blocked": 20,
+   "coasting_frames": 61,
+   "coverage_B": 1.0,
+   "occluded_frames": 21,
+   "n_history": 40,
+   "det_score_median": 0.513,
+   "size_median": [
+    0.1075,
+    0.0444,
+    0.0158
+   ],
+   "size_ref": [
+    0.1125,
+    0.0463,
+    0.0179
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 1.0,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 74,
+   "n_history": 40,
+   "det_score_median": 0.714,
+   "size_median": [
+    0.2804,
+    0.1182,
+    0.1099
+   ],
+   "size_ref": [
+    0.2856,
+    0.122,
+    0.1144
+   ]
+  }
+ }
+}

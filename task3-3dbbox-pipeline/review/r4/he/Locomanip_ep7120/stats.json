@@ -1,0 +1,58 @@
+{
+ "prompt": "water bottle . plastic bottle . container box .",
+ "n_frames": 154,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "bottle": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 122,
+   "rejected": 32,
+   "coverage": 0.792,
+   "coverage_det": 0.792,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 2,
+   "coverage_B": 0.805,
+   "occluded_frames": 71,
+   "n_history": 40,
+   "det_score_median": 0.546,
+   "size_median": [
+    0.1931,
+    0.1273,
+    0.105
+   ],
+   "size_ref": [
+    0.1948,
+    0.1333,
+    0.109
+   ]
+  },
+  "container": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 117,
+   "rejected": 37,
+   "coverage": 0.76,
+   "coverage_det": 0.643,
+   "prop_accepted": 18,
+   "ghost_blocked": 0,
+   "coasting_frames": 7,
+   "coverage_B": 0.805,
+   "occluded_frames": 54,
+   "n_history": 40,
+   "det_score_median": 0.413,
+   "size_median": [
+    0.2184,
+    0.1167,
+    0.0485
+   ],
+   "size_ref": [
+    0.2209,
+    0.1198,
+    0.053
+   ]
+  }
+ }
+}

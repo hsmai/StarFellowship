@@ -10,7 +10,6 @@ RoboBrain(RefSpatial) 파이프라인 기준:
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import numpy as np
-import cv2
 
 
 # ---------------------------------------------------------------- intrinsics
@@ -137,7 +136,7 @@ def same_depth_components(mask: np.ndarray, depth: np.ndarray, dscale: float,
             continue
         # 부속물(귀·줄기)은 본체보다 작다. 이 제한이 없으면 같은 깊이에 있는
         # 로봇 손이 통째로 합쳐진다(스모크 실측: charger 6x6x2 -> 7x25x24cm).
-        if areas[i - 1] > 0.3 * a0:
+        if areas[i - 1] > 0.5 * a0:
             continue
         cx = stats[i, cv2.CC_STAT_LEFT] + stats[i, cv2.CC_STAT_WIDTH] / 2
         cy = stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] / 2
@@ -150,7 +149,6 @@ def same_depth_components(mask: np.ndarray, depth: np.ndarray, dscale: float,
         if abs(float(np.median(di)) * dscale - z0) <= dz:
             out |= (lab == i)
     return out
-
 
 def mirror_extend_z(box3d, pts, min_pts: int = 30):
     """단일 시점 두께 결손을 대칭 가정으로 복원한다 (방식 B 전용).
@@ -173,7 +171,7 @@ def mirror_extend_z(box3d, pts, min_pts: int = 30):
     out = s.copy()
     # 상한을 관측 두께의 1.8배로 둔다. 물체가 기울어져 있으면 z_med-z_front가
     # 두께가 아니라 기울기를 재므로 무제한 확장은 위험하다.
-    out[2] = min(est, depth_obs * 1.35 if depth_obs > 1e-4 else est)
+    out[2] = min(est, depth_obs * 1.8 if depth_obs > 1e-4 else est)
     return out
 
 

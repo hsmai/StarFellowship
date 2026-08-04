@@ -1,0 +1,33 @@
+{
+ "prompt": "laptop . notebook computer .",
+ "n_frames": 69,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "laptop": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 68,
+   "rejected": 1,
+   "coverage": 0.986,
+   "coverage_det": 0.986,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 0.986,
+   "occluded_frames": 1,
+   "n_history": 40,
+   "det_score_median": 0.393,
+   "size_median": [
+    0.4614,
+    0.1599,
+    0.1635
+   ],
+   "size_ref": [
+    0.4631,
+    0.4258,
+    0.1718
+   ]
+  }
+ }
+}

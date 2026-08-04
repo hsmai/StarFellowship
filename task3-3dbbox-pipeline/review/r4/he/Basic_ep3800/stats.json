@@ -1,0 +1,58 @@
+{
+ "prompt": "pink round toy . orange plate .",
+ "n_frames": 132,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "pink toy": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 115,
+   "rejected": 17,
+   "coverage": 0.871,
+   "coverage_det": 0.864,
+   "prop_accepted": 1,
+   "ghost_blocked": 0,
+   "coasting_frames": 17,
+   "coverage_B": 1.0,
+   "occluded_frames": 72,
+   "n_history": 40,
+   "det_score_median": 0.761,
+   "size_median": [
+    0.104,
+    0.0985,
+    0.047
+   ],
+   "size_ref": [
+    0.1068,
+    0.0996,
+    0.0591
+   ]
+  },
+  "orange plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 132,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 1.0,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 39,
+   "n_history": 40,
+   "det_score_median": 0.728,
+   "size_median": [
+    0.3315,
+    0.2383,
+    0.1925
+   ],
+   "size_ref": [
+    0.3329,
+    0.2413,
+    0.2485
+   ]
+  }
+ }
+}

@@ -1,0 +1,58 @@
+{
+ "prompt": "water bottle . clear plastic bottle . red cup . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "bottle": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 217,
+   "rejected": 3,
+   "coverage": 0.986,
+   "coverage_det": 0.986,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 3,
+   "coverage_B": 1.0,
+   "occluded_frames": 31,
+   "n_history": 40,
+   "det_score_median": 0.588,
+   "size_median": [
+    0.0595,
+    0.0834,
+    0.0284
+   ],
+   "size_ref": [
+    0.0624,
+    0.0922,
+    0.0311
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 220,
+   "rejected": 0,
+   "coverage": 1.0,
+   "coverage_det": 1.0,
+   "prop_accepted": 0,
+   "ghost_blocked": 0,
+   "coasting_frames": 0,
+   "coverage_B": 1.0,
+   "occluded_frames": 41,
+   "n_history": 40,
+   "det_score_median": 0.729,
+   "size_median": [
+    0.1669,
+    0.0835,
+    0.0556
+   ],
+   "size_ref": [
+    0.1754,
+    0.088,
+    0.058
+   ]
+  }
+ }
+}
