@@ -190,29 +190,36 @@ def pick_h1_episodes(k=3):
     return out
 
 
+# H1 대표 6건 — description을 읽고 대상 물체를 직접 지정한다.
+# 1차 시험에서 태스크명 자동 파싱이 동사를 프롬프트에 넣어("adjust . tilt .") 검증이 무의미했다.
+# G1의 spec.py와 같은 방식(수작업 지정)으로 맞춰야 G1/H1 비교가 성립한다.
+H1_CASES = [
+    ("Articulated", 120, "click_a_button_on_the_mouse",
+     "black computer mouse . desk .", {"mouse": ("mouse", True), "desk": ("desk", False)}),
+    ("Basic", 2680, "pick_a_web_cam_and_place_it_in_a_container",
+     "webcam . container box .", {"webcam": ("webcam", True), "container": ("container", False)}),
+    ("Basic", 1960, "lift_a_kettle_from_base",
+     "kettle . base .", {"kettle": ("kettle", True), "base": ("base", False)}),
+    ("Precision", 7998, "place_a_soldering_gun_into_its_base_h1",
+     "soldering gun . base .", {"gun": ("soldering gun", True), "base": ("base", False)}),
+    ("Tool_use", 8398, "pick_the_hammer_and_hit_desk",
+     "hammer . desk .", {"hammer": ("hammer", True), "desk": ("desk", False)}),
+    ("deformable", 4718, "fold_a_jacket_on_the_desk",
+     "black jacket . cloth on desk .", {"jacket": ("jacket", True), "cloth": ("jacket", True)}),
+]
+
+
 def probe_h1(outdir, det, seg, dep):
-    """H1 에피소드에 현 파이프라인이 그대로 동작하는지. 프롬프트는 description에서 유추."""
-    import re
+    """H1 에피소드에 현 파이프라인을 그대로 적용. 프롬프트는 description 기반 수작업 지정."""
     res = {}
-    cases = pick_h1_episodes(3)
-    log(f"[h1] 대상 {len(cases)}건: {[(c[0], c[2]) for c in cases]}")
-    for cat, task, ep, desc in cases:
-        # description에서 명사구를 거칠게 뽑아 프롬프트 구성 (자동 생성 규칙과 동일 취지)
-        base = task.split("/")[-1]
-        base = re.sub(r"^h1-|_h1$", "", base)
-        toks = [t for t in re.split(r"[_\-]+", base) if len(t) > 2]
-        stop = {"the","and","into","with","from","robot","hand","left","right","its","for","onto"}
-        verbs = {"put","pick","place","open","close","push","pull","grab","hold","use","take",
-                 "fold","press","click","move","lift","hand","pass","clean","wipe","insert"}
-        objs = [t for t in toks if t not in stop and t not in verbs][:2] or ["object"]
-        prompt = " . ".join(objs) + " ."
-        targets = {objs[0]: (objs[0], True)}
-        seq = RV.frames_he(ep, stride=20, cap_n=25)
+    log(f"[h1] 대상 {len(H1_CASES)}건")
+    for cat, ep, task, prompt, targets in H1_CASES:
+        seq = RV.frames_he(ep, stride=20, cap_n=30)
         if not seq:
             log(f"   프레임 없음 ep{ep}"); continue
         H, W = seq[0][0].shape[:2]
         trk = EpisodeTracker(targets, det, seg, prompt, fps=FPS, profile=Profile())
-        snap = None
+        snap = snap_b = None
         for i, (img, gt) in enumerate(seq):
             d = np.array(gt, dtype=np.float32)
             if d.ndim == 1: d = d.reshape(d.size // W, W)
@@ -221,12 +228,17 @@ def probe_h1(outdir, det, seg, dep):
             rs = trk.step(img, d, K, 1e-3, align_dx=-20)
             if i == len(seq) // 2:
                 snap = trk.draw(img.copy(), rs, K, mode="A")
+                snap_b = trk.draw(img.copy(), rs, K, mode="B")
         if snap is not None:
-            cv2.imwrite(f"{outdir}/h1_{cat}_ep{ep}.png", snap)
-        res[f"{cat}/ep{ep}"] = dict(task=task, desc=desc[:120], prompt=prompt,
-                                    resolution=[W, H], n_frames=len(seq),
-                                    stats=summarize(trk, len(seq)))
-        log(f"   {cat}/ep{ep} ({W}x{H}) prompt='{prompt}' -> {res[f'{cat}/ep{ep}']['stats']}")
+            cv2.imwrite(f"{outdir}/h1_{cat}_ep{ep}.png", np.hstack([snap, snap_b]))
+        st = summarize(trk, len(seq))
+        # 로봇 손이 대상으로 오검출되는지: 승인 박스가 화면 하단에 몰리는지 확인
+        res[f"{cat}/ep{ep}"] = dict(task=task, prompt=prompt, resolution=[W, H],
+                                    n_frames=len(seq), stats=st)
+        tg = {lb: (round(v["coverage"]*100), [round(x*100) for x in v["size_median"]]
+                   if v["size_median"] else None)
+              for lb, v in st.items() if isinstance(v, dict) and v.get("is_target")}
+        log(f"   {cat}/ep{ep} '{prompt[:34]}' -> {tg}")
     json.dump(res, open(f"{outdir}/h1.json", "w"), ensure_ascii=False, indent=1, default=str)
     return res
 

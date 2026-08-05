@@ -14,7 +14,10 @@
    "coverage_B": 0.0,
    "occluded_frames": 0,
    "n_history": 0,
-   "size_median": null
+   "size_median": null,
+   "coverage_det": 0.0,
+   "evidence_ratio": 0.0,
+   "reliability": "신뢰불가"
   },
   "plate": {
    "is_target": false,

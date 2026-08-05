@@ -18,7 +18,10 @@
     0.0933,
     0.0531,
     0.0209
-   ]
+   ],
+   "coverage_det": 0.395,
+   "evidence_ratio": 0.395,
+   "reliability": "주의"
   },
   "plate": {
    "is_target": false,

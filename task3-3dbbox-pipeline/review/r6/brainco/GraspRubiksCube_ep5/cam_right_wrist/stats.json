@@ -18,7 +18,10 @@
     0.4257,
     0.0743,
     0.0686
-   ]
+   ],
+   "coverage_det": 0.732,
+   "evidence_ratio": 0.77,
+   "reliability": "양호"
   },
   "plate": {
    "is_target": false,
