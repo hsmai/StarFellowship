@@ -1,0 +1,29 @@
+=== 그림 렌더 시작 2026-08-05 20:45:12 node=pleiades1 ===
+Cannot import NystromAttention, you can not run original UniDepth. UniDepthV2 is available.
+Not loading pretrained weights for backbone
+EdgeGuidedLocalSSI reverts to a non cuda-optimized operation, you will experince large slowdown, please install it:  `cd ./unidepth/ops/extract_patches && bash compile.sh`
+모델 로드 완료
+--- he/deformable_ep4838 (1건)
+  sam_towel: mask 71479px (23.3%) pts=68982 size=[61.7, 26.9, 22.8] bev(w,d)=[87.4, 156.6]
+--- he/Articulated_ep280 (1건)
+  sam_laptop: mask 72492px (23.6%) pts=67489 size=[46.6, 22.8, 23.9] bev(w,d)=[58.2, 160.6]
+--- he/Basic_ep3800 (1건)
+  sam_toy: mask 8960px (2.9%) pts=8809 size=[12.6, 7.7, 5.5] bev(w,d)=[14.9, 12.1]
+--- brainco/PickToothpaste_ep5/cam_right_wrist (2건)
+  sam_tpaste: mask 75457px (24.6%) pts=75457 size=[16.8, 4.3, 7.2] bev(w,d)=[29.3, 20.8]
+  sam_tpaste_ok: mask 6668px (2.2%) pts=6668 size=[15.8, 12.4, 6.9] bev(w,d)=[16.0, 13.3]
+--- he/Precision_ep7918 (2건)
+  sam_rose_big: mask 47354px (15.4%) pts=43100 size=[17.3, 22.0, 32.2] bev(w,d)=[131.4, 212.9]
+  sam_rose_small: mask 769px (0.3%) pts=769 size=[28.6, 18.5, 12.3] bev(w,d)=[21.8, 33.9]
+--- brainco/PickDrink_ep5/cam_right_wrist (1건)
+  sam_drink: mask 184px (0.1%) pts=184 size=[9.8, 4.7, 6.1] bev(w,d)=[18.6, 30.2]
+--- brainco/PickDoll_ep5/cam_right_high (1건)
+  bp_doll: mask 11138px (3.6%) pts=11138 size=[29.1, 28.0, 19.2] bev(w,d)=[30.1, 20.4]
+--- he/Locomanip_ep7120 (1건)
+  bp_bottle: mask 13021px (4.2%) pts=11617 size=[10.1, 14.2, 17.5] bev(w,d)=[14.0, 81.0]
+--- brainco/PickApple_ep5/cam_left_high (1건)
+  bp_apple: mask 1584px (0.5%) pts=1584 size=[6.4, 5.4, 1.4] bev(w,d)=[8.2, 4.9]
+--- brainco/GraspRubiksCube_ep5/cam_right_wrist (1건)
+  bp_cube: mask 4584px (1.5%) pts=4584 size=[45.7, 8.0, 8.5] bev(w,d)=[68.7, 284.5]
+완료 → /home/isangmin/task3/probe3
+=== 종료 2026-08-05 20:48:16 ===
