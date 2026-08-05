@@ -66,11 +66,11 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 | Brainco | GraspOreo | 오레오 | 100% | 100% | 9×5×2 cm |
 | | GraspRubiksCube | 루빅스 큐브 | 100% | 100% | 7×7×3 cm |
 | | PickApple | 사과 | 100% | 100% | 7×6×2 cm |
-| | PickCharger | 충전기 | 89% | **99%** | 6×5×2 cm |
+| | PickCharger | 충전기 | 89% | **99%** | 5.9×5.3×2.2 cm |
 | | PickDoll | 인형 | 100% | 100% | 25×27×16 cm |
 | | PickDrink | 물병 | 100% | 100% | 6×11×5 cm |
 | | PickTissues | 티슈 | 100% | 100% | 11×9×7 cm |
-| | PickToothpaste | 치약 | 65% | **100%** | 15×4×3 cm |
+| | PickToothpaste | 치약 | 65% | **100%** | 11.0×2.6×1.3 cm |
 | HE | Basic | 분홍 인형 | 96% | 100% | 10×9×4 cm |
 | | Articulated | 노트북 | 99% | 99% | 47×19×26 cm |
 | | deformable | 수건 | 99% | 100% | 35×30×26 cm |
@@ -79,7 +79,12 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 | | Precision | 장미 | 98% | 100% | 31×10×4 cm |
 | | Tool_use | 먼지떨이 | 100% | 100% | 31×13×22 cm |
 
-추출 크기가 실물과 부합한다(루빅스 큐브 실제 5.7cm, 치약 15×4×3cm 등).
+추출 크기가 실물과 부합한다(루빅스 큐브 실제 5.7cm 등).
+
+> **PickCharger·PickToothpaste 수치 주의**: 이 두 태스크는 초반 크기 기준을 잡기 위해
+> 실제 치수를 이력 시드(`size_prior`)로 넣는다. 그래서 `stats.json`의 `size_median`에
+> 시드값이 그대로 남을 수 있어, 위 표에는 **실검출 프레임의 관측값 중앙값**을 적었다.
+> 시드가 섞인 `size_median`을 정확도 근거로 인용하면 안 된다.
 
 충전기·치약처럼 **작은 물체가 옮겨지는 구간에서는 검출이 끊기는 현상**이 발생한다.
 
