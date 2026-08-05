@@ -82,6 +82,7 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 추출 크기가 실물과 부합한다(루빅스 큐브 실제 5.7cm, 치약 15×4×3cm 등).
 
 충전기·치약처럼 **작은 물체가 옮겨지는 구간에서는 검출이 끊기는 현상**이 발생한다.
+
 해당 현상이 발견되는 task는 Brainco(charger, toothpaste) | Humanoid Everyday(Basic : pinktoy) 이며, 현재 개선 진행중이다.
 
 **손목 카메라는 별개다.** 물체가 화면을 가득 채우거나(인형·티슈) 조작에 관여하지 않는
