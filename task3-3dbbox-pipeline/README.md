@@ -1,36 +1,61 @@
-# Task 3 — Unitree G1 데이터셋 3D Bounding Box 추출 파이프라인
+# Unitree G1 데이터셋 3D Bounding Box 추출 파이프라인
 
-RoboBrain의 Pseudo-3D Object Annotation Pipeline(5단계)을 Unitree G1 데이터셋
-(**Brainco 8태스크**, **Humanoid Everyday 246태스크**)에 적용해 3D Bounding Box를 생성한다.
+로봇 조작 영상에서 **대상 물체의 3D Bounding Box를 자동으로 생성**한다.
+RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2종에 적용했다.
 
-**최종 목표**: 다운로드된 전 데이터셋에 3D box를 생성한다. 지금은 그 생성기를
-robust하게 만들고 설정 가능하게 정비하는 단계다.
+![파이프라인](docs/assets/pipeline_overview.png)
 
-## 문서
+## 무엇을 하는가
 
-| 문서 | 내용 |
-|---|---|
-| [pipeline-design.md](docs/pipeline-design.md) | **현행 설계** — 5단계 구성, 게이트, 2가지 방식 |
-| [settings.md](docs/settings.md) | **세부 설정** — 실행 파라미터, 태스크별 프로파일, GPU 실행 |
-| [generalization.md](docs/generalization.md) | **일반화 전략** — 전 데이터 적용 준비와 품질 확인 체계 |
-| [improvement-log.md](docs/improvement-log.md) | 개선 이력 — 라운드별 증상·원인·수정과 방법론 교훈 |
-| [step0-robobrain-pipeline.md](docs/step0-robobrain-pipeline.md) | RoboBrain 파이프라인 조사 (계보·논문·미공개 항목) |
-| [step05-cpu-verification.md](docs/step05-cpu-verification.md) | 4~5단계 CPU 선행 검증 |
-| [step1-5-results.md](docs/step1-5-results.md) | 최초 end-to-end 실행 결과와 depth 정확도 검증 |
+입력은 로봇이 촬영한 RGB 영상이고, 출력은 **프레임마다 대상 물체를 감싸는 3D 박스**다.
+사람이 라벨을 달지 않아도 텍스트 프롬프트("oreo snack package")만으로 동작한다.
 
-## 빠른 시작
+| 대상 데이터셋 | 규모 | 특징 |
+|---|---|---|
+| **G1 Brainco** | 8 태스크 / 1,598 에피소드 | 카메라 4대(머리 좌우 + 손목 좌우), depth 없음 → **추정** |
+| **Humanoid Everyday** | 246 태스크 / 4,064 에피소드(g1) | 카메라 1대(1인칭), **실측 depth** 있음 |
 
-```bash
-# 실행 설정 확인 (프리셋별 예상 소요 시간)
-python pipeline/config.py
+## 어떻게 동작하는가
 
-# 15개 대표 검증 (개선→평가 루프)
-qsub -q pleiades1 pipeline/pbs_r4.sh
-```
+위 그림의 5단계를 그대로 구현했다. 각 단계의 구현 선택은 다음과 같다.
 
-## 검증 결과 (r6, 2026-08-05)
+| 단계 | 모듈 | 구현 |
+|---|---|---|
+| 1 | GroundingDINO | 텍스트 → 2D 박스. 저임계 단일 패스 후 트래커가 강·약 판정 |
+| 2 | SAM 2.1 | 박스 → 마스크. 검출 실패 시 직전 관측 위치에서 전파 |
+| 3 | UniDepthV2 / 실측 depth | Brainco는 추정(내부 파라미터도 함께 산출), HE는 parquet 실측값 |
+| 4 | Back-projection | 마스크 + depth + 내부 파라미터 → 객체별 점군 |
+| 5 | 3D Box | 점군 → axis-aligned 박스 |
 
-**두 데이터셋의 모든 종류의 태스크 15종을 전부 검증**했다 (태스크당 에피소드 1개, 39 유닛).
+**WildCamera는 쓰지 않는다.** UniDepthV2가 내부 파라미터를 함께 출력하기 때문이다(실측 확인).
+
+### 가려짐 처리 — 두 가지 결과를 함께 낸다
+
+로봇 손이 물체를 가리는 상황을 두 관점으로 나눠 산출한다. 1~4단계가 공통이라
+**한 번 처리로 두 결과가 나오고** 시간이 두 배가 되지 않는다.
+
+| | **방식 A — 보이는 부분만** | **방식 B — 가려진 부분까지** |
+|---|---|---|
+| 정의 | 실제로 관측된 픽셀만으로 박스 산출 | 가려진 부분을 고려한 물체 실제 크기 |
+| 관측이 끊기면 | 그리지 않음 | 직전 크기를 유지하며 위치를 추정 |
+| 쓰임 | 관측 사실만 필요할 때 | 물체의 실제 치수가 필요할 때 |
+
+### 잘못된 박스를 걸러내는 방법
+
+판정 기준이 카메라 거리나 물체 자세에 의존하면 다른 에피소드에서 반드시 깨진다.
+그래서 **스케일에 불변인 양**으로만 판정한다.
+
+| 검사 | 기준 | 왜 불변인가 |
+|---|---|---|
+| 물리 크기 | 2D 박스가 그 깊이에서 가리키는 폭 ≤ 0.75m | 거리로 나눴으므로 카메라가 달라도 같은 값 |
+| 재투영 정합 | 3D 중심을 되투영한 점이 2D 박스 안 | 핀홀 모델상 반드시 성립 |
+| 회전불변 대각 | 대각이 이력 중앙값의 2배 이내 | 박스 변 길이는 회전만으로 √3배 변하지만 대각은 불변 |
+
+통과하지 못하면 **박스를 그리지 않는다.** 틀린 박스를 그리는 것보다 낫다고 보았다.
+
+## 검증 결과
+
+두 데이터셋의 **모든 종류의 태스크 15종을 전부** 검증했다(태스크당 에피소드 1개, 39 유닛).
 
 | 데이터셋 | 태스크 | 대상 | 방식 A | 방식 B | 추출 크기 |
 |---|---|---|---|---|---|
@@ -50,14 +75,24 @@ qsub -q pleiades1 pipeline/pbs_r4.sh
 | | Precision | 장미 | 98% | 100% | 31×10×4 cm |
 | | Tool_use | 먼지떨이 | 100% | 100% | 31×13×22 cm |
 
-추출 크기가 실물과 부합한다 — 루빅스 큐브(실제 5.7cm), 치약(15×4×3cm), 충전기 등.
+추출 크기가 실물과 부합한다(루빅스 큐브 실제 5.7cm, 치약 15×4×3cm 등).
 
 충전기·치약처럼 **작은 물체가 옮겨지는 구간에서는 검출이 끊겨** 방식 A가 낮다.
 이 구간은 방식 B가 실제 크기를 유지하며 위치를 추정해 덮는다.
 
-## 실행 설정
+> 다음 단계: 태스크당 3~5 에피소드로 확대해 **에피소드 간 편차**를 확인한다(robustness 검증).
 
-`pipeline/config.py`에서 조정한다. 자세한 값은 [settings.md](docs/settings.md) 참조.
+## 실행
+
+```bash
+# 15개 대표 검증 (개선 → 평가 루프)
+qsub -q pleiades1 pipeline/pbs_review.sh
+
+# robustness — 모든 태스크를 태스크당 n개 에피소드로
+BC_PER_TASK=5 HE_PER_TASK=3 python pipeline/run_robust.py rb1
+```
+
+처리량과 산출물은 `pipeline/config.py`에서 조정한다.
 
 | 프리셋 | fps | 카메라 | 에피소드 | 예상(GPU 2장) |
 |---|---|---|---|---|
@@ -66,71 +101,60 @@ qsub -q pleiades1 pipeline/pbs_r4.sh
 | `balanced` | 6 | 머리 2대 | 전수 | 78h |
 | `full` | 6 | 4대 | 전수 | 137h |
 
-주요 조정: `fps`(완료 시간에 정비례), `cameras`(대수에 정비례),
-`episodes_per_task`(0=전수), `amodal`(가림 보정), `save_video`(대량 시 끔).
+**GPU는 PBS batch job으로만 사용한다**(연구실 정책). 자세한 값과 정책은
+[settings.md](docs/settings.md) 참조.
 
-태스크별로 다른 설정이 필요한 경우 `pipeline/profiles.py`에서 지정한다 —
-전역 값을 바꾸면 잘 되던 태스크가 깨지기 때문이다.
-
-## 파이프라인 5단계
+## 코드 구성
 
 ```
-RGB 프레임
-  → 1. GroundingDINO  (텍스트 프롬프트 → 2D 박스)
-  → 2. SAM 2.1        (박스 → 인스턴스 마스크 + 프레임 간 추적)
-  → 3. UniDepthV2 / 실측 depth  (metric depth + intrinsics)
-  → 4. Back-projection (마스크 + depth → 객체별 점군)
-  → 5. 3D Bounding Box (점군 → axis-aligned 박스)
+pipeline/
+├── track3d.py       추적 · 검증 게이트 · 방식 A/B          ← 핵심
+├── geometry.py      역투영 · 점군 정제 · 3D 박스 산출 (4~5단계, GPU 불필요)
+├── models_wrap.py   GroundingDINO / SAM 2.1 / UniDepthV2 래퍼 (1~3단계)
+├── spec.py          태스크별 검출 프롬프트와 대상 물체
+├── profiles.py      태스크별 처리 설정
+├── config.py        실행 설정 (fps · 카메라 · 샘플 수 · 산출물)
+├── run_review.py    15개 대표 검증 러너
+├── run_robust.py    robustness 검증 러너
+└── pbs_review.sh    PBS job 스크립트
 ```
 
-**3D box 2가지 방식** — 1~4단계가 공통이라 한 번 처리로 동시 산출한다.
+### 왜 태스크별 설정이 필요한가
 
-| 방식 A (관측된 것만) | 방식 B (가림 보정) |
+전역 파라미터 하나로 모든 태스크를 만족시킬 수 없다. 한 태스크를 고치려고 전역 값을
+바꿨다가 잘 되던 태스크가 무너진 적이 있다(오레오 100% → 67%, 충전기 6×6×2 → 8×28×30cm).
+
+그래서 **문제가 있는 태스크에만** 설정을 건다. 신규 옵션은 기본값이 전부 비활성이라,
+지정하지 않은 태스크는 코드 경로가 바뀌지 않는다.
+
+## 문서
+
+| 문서 | 내용 |
 |---|---|
-| 실제로 보이는 픽셀만으로 박스 | 가려진 부분을 고려한 물체 실제 크기 |
-| 관측이 끊기면 그리지 않음 | 실제 크기를 유지하며 위치 추정(최대 2.5초) |
-
-## 산출물
-
-```
-review/<라운드>/
-├── brainco/<태스크>_ep<N>/<카메라>/
-│   ├── A_visible.mp4  B_amodal.mp4     방식 A/B 오버레이 영상
-│   ├── AB_compare.png  AB_occluded.png 좌우 비교 / 가림 순간
-│   ├── stats.json                      커버리지·실관측·크기·기각 사유
-│   └── frames.json                     프레임별 3D box와 진단량
-└── he/<카테고리>_ep<N>/                 (HE는 카메라 1대)
-```
-
-## GPU 사용 — 연구실 정책 준수
-
-**PBS batch job으로만 실행한다.** interactive job과 job 없는 직접 실행은 금지다.
-
-- Node 1은 job당 CPU 4개, Node 3은 8개 제한
-- job 이름 규칙: `G{GPU수}C{CPU수}_{이니셜}_{프로젝트}`
-- job 내부에서 재시도 루프를 돌리고, 완료된 유닛은 결과 파일 존재로 건너뛴다 → **중단 시 이어서 진행**
-
-```bash
-qsub -q pleiades1 -l select=1:ncpus=4:ngpus=1 -l walltime=05:00:00 pipeline/pbs_r4.sh
-qstat -u isangmin
-```
+| [pipeline-design.md](docs/pipeline-design.md) | 설계 상세 — 각 단계의 구현 선택과 근거 |
+| [settings.md](docs/settings.md) | 실행 파라미터, 태스크별 프로파일, GPU 정책 |
+| [generalization.md](docs/generalization.md) | 전 데이터 적용 전략과 품질 확인 체계 |
+| [improvement-log.md](docs/improvement-log.md) | 개선 이력 — 무엇이 왜 잘못됐고 어떻게 고쳤는가 |
+| [구축 보고서 (docx)](docs/Task3_3DBBox_파이프라인_구축보고.docx) | 보고용 요약 |
 
 ## 알려진 데이터 특성
 
 | 항목 | 내용 |
 |---|---|
 | **PickDrink 라벨 오류** | 지시문은 "red cup"이지만 실물은 파란 뚜껑 물병. **지시문을 그대로 믿으면 안 된다** |
-| HE 로봇 혼재 | g1 4,064 + h1 4,885. 본 과제는 G1이므로 g1만 사용 |
-| HE target 위치 | 태스크명이 아니라 **description에 명시** |
-| HE RGB-depth 정렬 | depth가 RGB 대비 약 20px 어긋남 |
-| HE intrinsics | 메타에 없어 FOV 70° 가정 — 3D 크기가 상수배로 어긋날 수 있음 |
-| depth 정확도 | UniDepthV2는 근접(0.3~0.8m) 오차 43%, 중거리(1~3m) 21.7% |
+| HE 로봇 혼재 | g1 4,064 + h1 4,885 에피소드. 본 과제는 G1이므로 g1만 사용 |
+| HE 대상 물체 위치 | 태스크명이 아니라 **description에 명시**되어 있다 |
+| HE RGB-depth 정렬 | depth가 RGB 대비 약 20px 어긋나 있어 보정한다 |
+| HE 내부 파라미터 | 메타에 없어 화각 70° 가정 — 3D 크기가 상수배로 어긋날 수 있다 |
+| depth 정확도 | UniDepthV2는 근접(0.3~0.8m)에서 오차 43%, 중거리(1~3m)에서 21.7% |
 
-## 품질 지표에 대한 방침
+## 산출물
 
-산출물 품질을 자동 판정하는 지표를 계산하지만, **이것으로 파라미터를 자동 조정하지 않는다.**
+검증 영상은 용량 때문에 저장소에 넣지 않고 구글 드라이브로 공유한다.
+저장소에는 태스크별 통계(`stats.json`)와 비교 이미지만 남긴다.
 
-> 실측 사례: "화면의 12% 이상이면 오검출"이라는 지표가 손목 카메라에서 **정상 물체를 잘라냈다.**
-> 손목은 근접 촬영이라 물체가 화면을 채우는 것이 정상이다.
-
-지표는 대규모 실행에서 **사람이 볼 표본을 고르는 용도**이고, 판정의 최종 근거는 육안 검증이다.
+```
+review/r6/
+├── brainco/<태스크>_ep5/<카메라>/  stats.json · AB_compare.png
+└── he/<카테고리>_ep<N>/            stats.json · AB_compare.png
+```

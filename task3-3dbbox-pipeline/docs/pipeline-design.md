@@ -1,7 +1,8 @@
-# 3D BBox 추출 파이프라인 — 현행 설계
+# 설계 상세 — 각 단계의 구현 선택과 근거
 
-> 이 문서가 **현재 유효한 설계**다. 라운드별 변경 이력은 [improvement-log.md](improvement-log.md)에 있다.
-> 대상: Unitree G1 데이터셋 2종 (Brainco 8태스크, Humanoid Everyday 246태스크)
+> 파이프라인이 무엇이고 무엇을 하는지는 [README](../README.md)에 있다.
+> 이 문서는 **왜 그렇게 구현했는가**를 다룬다. 실행 파라미터는 [settings.md](settings.md),
+> 개선 이력은 [improvement-log.md](improvement-log.md)에 분리돼 있다.
 
 ## 1. 목표
 
@@ -75,61 +76,6 @@
 > 지시문을 그대로 믿으면 안 된다는 것이 PickDrink 사례의 교훈이다.
 > 전체 적용 전에 **각 데이터셋의 실제 target object 목록 검토**가 선행돼야 한다.
 
-## 7. 실행 설정 (`pipeline/config.py`)
+## 7. 파일 구성
 
-```python
-from config import PRESETS, RunConfig
-cfg = PRESETS["balanced"]                         # 미리 정의된 조합
-cfg = RunConfig(fps=3.0, cameras=["cam_left_high"], amodal=False)   # 직접 지정
-```
-
-| 프리셋 | fps | 카메라 | 에피소드 | 예상(GPU 2장) |
-|---|---|---|---|---|
-| `review` | 10 | 4대 | 전수 | 161h |
-| `balanced` | 6 | 머리 2대 | 전수 | 78h |
-| `fast` | 3 | 머리 1대 | 전수 | **25h** |
-| `full` | 6 | 4대 | 전수 | 137h |
-| `robust3` | 6 | 머리 2대 | **태스크당 3개** | **4.5h** |
-| `robust5` | 6 | 머리 2대 | 태스크당 5개 | 7.4h |
-| `visible_only` | 6 | 머리 2대 | 전수 | 78h (방식 B 없음) |
-
-조정 가능한 주요 항목: `fps`(완료 시간에 정비례), `cameras`(대수에 정비례),
-`episodes_per_task`(0=전수), `amodal`(가림 보정 여부), `save_video`(대량 시 끔).
-
-## 8. 품질 지표의 위치 — 보조 수단
-
-산출물 품질을 자동 판정하는 지표(`coverage_det`, `max_gap_s`, `peer_ratio`, `det_margin`)를
-계산하지만, **이것으로 파라미터를 자동 조정하지 않는다.**
-
-> 실측 사례: "화면의 12% 이상을 차지하면 오검출"이라는 지표가 손목 카메라에서
-> **정상 물체를 잘라냈다.** 손목은 근접 촬영이라 물체가 화면을 채우는 것이 정상이다.
-
-지표는 **대규모 실행에서 사람이 볼 표본을 고르는 용도**로만 쓰고,
-품질 판정의 최종 근거는 육안 검증이다.
-
-## 9. GPU 사용 (연구실 정책 준수)
-
-- **PBS batch job으로만** 실행한다. interactive job과 job 없는 직접 실행은 금지다.
-- Node 1은 job당 CPU 4개, Node 3은 8개 제한.
-- job 이름 규칙: `G{GPU수}C{CPU수}_{이니셜}_{프로젝트}`
-
-```bash
-qsub -q pleiades1 -l select=1:ncpus=4:ngpus=1 -l walltime=05:00:00 pipeline/pbs_r4.sh
-```
-
-job 내부에서 재시도 루프를 돌리고, 완료된 유닛은 결과 파일 존재로 건너뛴다.
-중단되어도 이어서 진행된다.
-
-## 10. 파일 구성
-
-```
-pipeline/
-├── config.py        실행 설정 (fps·카메라·산출물·샘플링)
-├── spec.py          태스크별 프롬프트와 target object
-├── geometry.py      역투영·점군정제·AABB·재투영검사·거울보정  (4~5단계, GPU 불필요)
-├── models_wrap.py   GroundingDINO / SAM 2.1 / UniDepthV2 래퍼  (1~3단계)
-├── track3d.py       추적·게이트·방식 A/B                        ← 핵심
-├── run_review.py    15개 대표 검증 러너 (개선→평가 루프용)
-├── queue_runner.py  대량 실행용 작업 큐 러너
-└── pbs_*.sh         PBS job 스크립트
-```
+[README의 코드 구성](../README.md#코드-구성)을 참조.
