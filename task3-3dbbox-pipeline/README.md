@@ -55,7 +55,11 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 
 ## 검증 결과
 
-두 데이터셋의 **모든 종류의 태스크 15종을 전부** 검증했다(태스크당 에피소드 1개, 39 유닛).
+두 데이터셋의 **모든 종류의 태스크 15종을 전부** 검증했다.
+검증 단위는 39개다 — Brainco 8태스크 × 4카메라(32) + HE 7카테고리 × 1카메라(7),
+각 태스크당 에피소드 1개.
+
+아래 표는 **머리 카메라 기준**이다(Brainco는 좌·우 중 좋은 쪽).
 
 | 데이터셋 | 태스크 | 대상 | 방식 A | 방식 B | 추출 크기 |
 |---|---|---|---|---|---|
@@ -80,19 +84,46 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 충전기·치약처럼 **작은 물체가 옮겨지는 구간에서는 검출이 끊겨** 방식 A가 낮다.
 이 구간은 방식 B가 실제 크기를 유지하며 위치를 추정해 덮는다.
 
+**손목 카메라는 별개다.** 물체가 화면을 가득 채우거나(인형·티슈) 조작에 관여하지 않는
+손이라 시야에 아예 없는 경우가 있어, 39유닛 중 4개는 방식 A 검출률이 0%다.
+자세한 내용은 [generalization.md](docs/generalization.md)를 참조.
+
 > 다음 단계: 태스크당 3~5 에피소드로 확대해 **에피소드 간 편차**를 확인한다(robustness 검증).
 
 ## 실행
 
-```bash
-# 15개 대표 검증 (개선 → 평가 루프)
-qsub -q pleiades1 pipeline/pbs_review.sh
+### 전제
 
-# robustness — 모든 태스크를 태스크당 n개 에피소드로
+이 코드는 **연구실 pleiades 서버 환경을 전제**로 한다. 경로가 상수로 박혀 있어
+다른 환경에서는 각 러너 상단의 `ROOT`·`DATA`를 고쳐야 한다.
+
+| 항목 | 값 |
+|---|---|
+| 저장소 위치 | `~/task3` (러너의 `ROOT` 기본값) |
+| 데이터셋 | `/data2/humanoid_dataset_isangmin` |
+| conda 환경 | `task3` — `bash pipeline/setup_env.sh`로 생성 (최초 1회) |
+| 기타 | `ffmpeg` (Brainco 프레임 추출에 사용) |
+
+### 명령
+
+```bash
+# 최초 1회 — conda 환경 + 모델 3종 설치
+bash pipeline/setup_env.sh
+
+# 15개 대표 검증. KIND=bc|he|all, RND=산출 폴더명
+qsub -q pleiades1 -v KIND=all,RND=r7 pipeline/pbs_review.sh
+
+# robustness — 모든 태스크를 태스크당 n개 에피소드로. 인자는 산출 폴더명
 BC_PER_TASK=5 HE_PER_TASK=3 python pipeline/run_robust.py rb1
 ```
 
-처리량과 산출물은 `pipeline/config.py`에서 조정한다.
+### 처리량 조정
+
+지금은 러너가 값을 직접 읽는다 — `run_review.py` 상단 상수(`STRIDE`, `BC_MAX_FRAMES`)와
+`run_robust.py`의 환경변수(`BC_PER_TASK`, `HE_PER_TASK`, `FPS`, `CAMS`)다.
+
+`pipeline/config.py`는 **프리셋 정의와 소요 시간 추정 전용**이며 러너와 아직 배선되지 않았다
+(`python pipeline/config.py`로 아래 표를 계산한다).
 
 | 프리셋 | fps | 카메라 | 에피소드 | 예상(GPU 2장) |
 |---|---|---|---|---|
@@ -108,6 +139,7 @@ BC_PER_TASK=5 HE_PER_TASK=3 python pipeline/run_robust.py rb1
 
 ```
 pipeline/
+├── setup_env.sh     환경 구축 (conda 환경 + 모델 3종)      ← 최초 1회
 ├── track3d.py       추적 · 검증 게이트 · 방식 A/B          ← 핵심
 ├── geometry.py      역투영 · 점군 정제 · 3D 박스 산출 (4~5단계, GPU 불필요)
 ├── models_wrap.py   GroundingDINO / SAM 2.1 / UniDepthV2 래퍼 (1~3단계)

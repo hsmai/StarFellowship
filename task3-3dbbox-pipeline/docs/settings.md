@@ -3,9 +3,14 @@
 > 파이프라인이 무엇이고 어떻게 동작하는지는 [pipeline-design.md](pipeline-design.md)에 있다.
 > 이 문서는 **값과 조정 방법**만 다룬다.
 
-## 1. 실행 설정 (`pipeline/config.py`)
+## 1. 실행 설정
 
 전체 데이터셋 적용 시 조정하는 값들이다. 알고리즘이 아니라 **처리량과 산출물 구성**을 바꾼다.
+
+> **현재 상태**: 러너는 아래 값을 직접 읽는다 —
+> `run_review.py` 상단 상수(`STRIDE`, `BC_MAX_FRAMES`, `HE_MAX_FRAMES`)와
+> `run_robust.py`의 환경변수(`BC_PER_TASK`, `HE_PER_TASK`, `FPS`, `BC_CAP`, `HE_CAP`, `CAMS`).
+> `pipeline/config.py`는 **프리셋 정의와 소요 시간 추정 전용**이며 러너와 아직 배선되지 않았다.
 
 | 항목 | 기본 | 효과 |
 |---|---|---|
@@ -32,11 +37,14 @@
 | `robust5` | 6 | 머리 2대 | 태스크당 5개 | 7.4h |
 | `visible_only` | 6 | 머리 2대 | 전수 | 78h (방식 B 없음) |
 
-```python
-from config import PRESETS, RunConfig
-cfg = PRESETS["robust3"]
-cfg = RunConfig(fps=3.0, cameras=["cam_left_high"], amodal=False)   # 직접 지정
-cfg.estimate(n_episodes=4064, avg_sec=12.8)                         # 시간 추정
+```bash
+python pipeline/config.py     # 위 표를 계산해 출력한다
+```
+
+```bash
+# 실제 실행은 환경변수로 조정한다
+BC_PER_TASK=5 HE_PER_TASK=3 FPS=6 CAMS=cam_left_high,cam_right_high \
+  python pipeline/run_robust.py rb1
 ```
 
 ## 2. 태스크별 프로파일 (`pipeline/profiles.py`)
@@ -46,14 +54,22 @@ cfg.estimate(n_episodes=4064, avg_sec=12.8)                         # 시간 추
 
 ### 기준 프로파일
 
+`R2`·`R3`·`R4`는 **각 개선 라운드에서 확정된 설정 묶음**의 이름이다
+(라운드 2·3·4 → 결과 폴더 `review/r2`·`r3`·`r4`. 최종 산출은 `review/r6`).
+
 | 옵션 | R2 (기본) | R3 | R4 |
 |---|---|---|---|
 | `filter_pct` | (10,90) | (2,98) | (10,90) |
 | `filter_mad` | 1.5 | 3.0 | 1.5 |
 | `components` | largest | same_depth | same_depth |
 | `use_distractors` | True | False | False |
+| `anchor_prop` | **False** | True | True |
+| `prop_limit_sec` | **0 (무제한)** | 0 | 1.0 |
 | `mirror_z` | False | True | True |
 | `iou_bonus` | 0.3 | 0.3 | 0.45 |
+
+전파 앵커링(`anchor_prop`)과 시간 제한(`prop_limit_sec`)은 **R3·R4 프로파일에서만** 켜진다.
+R2를 쓰는 태스크(오레오·루빅스·사과·충전기·치약·Articulated·Basic)는 적용되지 않는다.
 
 ### 태스크 지정
 
@@ -97,7 +113,8 @@ cfg.estimate(n_episodes=4064, avg_sec=12.8)                         # 시간 추
 - job 내부 재시도 루프 + 결과 파일 존재 확인 → **중단 시 이어서 진행**
 
 ```bash
-qsub -q pleiades1 -l select=1:ncpus=4:ngpus=1 -l walltime=05:00:00 pipeline/pbs_r6.sh
+qsub -q pleiades1 -l select=1:ncpus=4:ngpus=1 -l walltime=05:00:00 \
+     -v KIND=all,RND=r7 pipeline/pbs_review.sh
 qstat -u <user>
 ```
 
