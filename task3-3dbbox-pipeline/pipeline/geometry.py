@@ -10,6 +10,7 @@ RoboBrain(RefSpatial) 파이프라인 기준:
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import numpy as np
+import cv2
 
 
 # ---------------------------------------------------------------- intrinsics

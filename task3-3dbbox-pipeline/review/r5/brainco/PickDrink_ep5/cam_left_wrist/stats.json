@@ -1,0 +1,40 @@
+{
+ "prompt": "red cup . plate .",
+ "n_frames": 220,
+ "fps": 10.0,
+ "stride": 3,
+ "stats": {
+  "red cup": {
+   "is_target": true,
+   "confirmed": true,
+   "accepted": 188,
+   "rejected": 32,
+   "coverage": 0.855,
+   "coasting_frames": 32,
+   "coverage_B": 1.0,
+   "occluded_frames": 205,
+   "n_history": 10,
+   "size_median": [
+    0.3237,
+    0.1472,
+    0.0897
+   ]
+  },
+  "plate": {
+   "is_target": false,
+   "confirmed": true,
+   "accepted": 164,
+   "rejected": 56,
+   "coverage": 0.745,
+   "coasting_frames": 31,
+   "coverage_B": 0.886,
+   "occluded_frames": 165,
+   "n_history": 6,
+   "size_median": [
+    0.3931,
+    0.2431,
+    0.0606
+   ]
+  }
+ }
+}

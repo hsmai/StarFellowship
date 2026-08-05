@@ -28,9 +28,12 @@ BRAINCO = {
     "PickDoll": dict(
         prompt="stuffed animal toy . plate .",
         targets={"toy": ("doll", True), "plate": ("plate", False)}),
+    # 공식 지시문은 "Pick up the red cup on the table."이지만 영상 실물은 파란 뚜껑
+    # 투명 물병이다(수집 중 물체가 바뀌고 지시문이 갱신되지 않음). r3에서 이 프롬프트로
+    # 0%→100%가 됐는데, r2 롤백 때 되돌아가 다시 무너졌다.
     "PickDrink": dict(
-        prompt="red cup . plate .",
-        targets={"cup": ("red cup", True), "plate": ("plate", False)}),
+        prompt="water bottle . clear plastic bottle . red cup . plate .",
+        targets={"bottle": ("bottle", True), "cup": ("bottle", True), "plate": ("plate", False)}),
     "PickTissues": dict(
         prompt="pack of wet wipes . plate .",
         targets={"wipes": ("tissue pack", True), "plate": ("plate", False)}),

@@ -10,7 +10,9 @@ robust하게 만들고 설정 가능하게 정비하는 단계다.
 
 | 문서 | 내용 |
 |---|---|
-| [pipeline-design.md](docs/pipeline-design.md) | **현행 설계** — 5단계 구성, 게이트, 2가지 방식, 실행 설정 |
+| [pipeline-design.md](docs/pipeline-design.md) | **현행 설계** — 5단계 구성, 게이트, 2가지 방식 |
+| [settings.md](docs/settings.md) | **세부 설정** — 실행 파라미터, 태스크별 프로파일, GPU 실행 |
+| [generalization.md](docs/generalization.md) | **일반화 전략** — 전 데이터 적용 준비와 품질 확인 체계 |
 | [improvement-log.md](docs/improvement-log.md) | 개선 이력 — 라운드별 증상·원인·수정과 방법론 교훈 |
 | [step0-robobrain-pipeline.md](docs/step0-robobrain-pipeline.md) | RoboBrain 파이프라인 조사 (계보·논문·미공개 항목) |
 | [step05-cpu-verification.md](docs/step05-cpu-verification.md) | 4~5단계 CPU 선행 검증 |
@@ -26,20 +28,49 @@ python pipeline/config.py
 qsub -q pleiades1 pipeline/pbs_r4.sh
 ```
 
+## 검증 결과 (r6, 2026-08-05)
+
+**두 데이터셋의 모든 종류의 태스크 15종을 전부 검증**했다 (태스크당 에피소드 1개, 39 유닛).
+
+| 데이터셋 | 태스크 | 대상 | 방식 A | 방식 B | 추출 크기 |
+|---|---|---|---|---|---|
+| Brainco | GraspOreo | 오레오 | 100% | 100% | 9×5×2 cm |
+| | GraspRubiksCube | 루빅스 큐브 | 100% | 100% | 7×7×3 cm |
+| | PickApple | 사과 | 100% | 100% | 7×6×2 cm |
+| | PickCharger | 충전기 | 89% | **99%** | 6×5×2 cm |
+| | PickDoll | 인형 | 100% | 100% | 25×27×16 cm |
+| | PickDrink | 물병 | 100% | 100% | 6×11×5 cm |
+| | PickTissues | 티슈 | 100% | 100% | 11×9×7 cm |
+| | PickToothpaste | 치약 | 65% | **100%** | 15×4×3 cm |
+| HE | Basic | 분홍 인형 | 96% | 100% | 10×9×4 cm |
+| | Articulated | 노트북 | 99% | 99% | 47×19×26 cm |
+| | deformable | 수건 | 99% | 100% | 35×30×26 cm |
+| | HRI | 장미 | 99% | 100% | 29×12×5 cm |
+| | Locomanip | 물병 | 81% | 81% | 9×19×11 cm |
+| | Precision | 장미 | 98% | 100% | 31×10×4 cm |
+| | Tool_use | 먼지떨이 | 100% | 100% | 31×13×22 cm |
+
+추출 크기가 실물과 부합한다 — 루빅스 큐브(실제 5.7cm), 치약(15×4×3cm), 충전기 등.
+
+충전기·치약처럼 **작은 물체가 옮겨지는 구간에서는 검출이 끊겨** 방식 A가 낮다.
+이 구간은 방식 B가 실제 크기를 유지하며 위치를 추정해 덮는다.
+
 ## 실행 설정
 
-`pipeline/config.py`에서 처리량과 산출물을 조정한다.
+`pipeline/config.py`에서 조정한다. 자세한 값은 [settings.md](docs/settings.md) 참조.
 
 | 프리셋 | fps | 카메라 | 에피소드 | 예상(GPU 2장) |
 |---|---|---|---|---|
-| `review` | 10 | 4대 | 전수 | 161h |
-| `balanced` | 6 | 머리 2대 | 전수 | 78h |
-| `fast` | 3 | 머리 1대 | 전수 | **25h** |
 | `robust3` | 6 | 머리 2대 | 태스크당 3개 | **4.5h** |
-| `visible_only` | 6 | 머리 2대 | 전수 | 78h (가림 보정 없음) |
+| `fast` | 3 | 머리 1대 | 전수 (5,662) | **25h** |
+| `balanced` | 6 | 머리 2대 | 전수 | 78h |
+| `full` | 6 | 4대 | 전수 | 137h |
 
-주요 조정 항목: `fps`(완료 시간에 정비례), `cameras`(대수에 정비례),
+주요 조정: `fps`(완료 시간에 정비례), `cameras`(대수에 정비례),
 `episodes_per_task`(0=전수), `amodal`(가림 보정), `save_video`(대량 시 끔).
+
+태스크별로 다른 설정이 필요한 경우 `pipeline/profiles.py`에서 지정한다 —
+전역 값을 바꾸면 잘 되던 태스크가 깨지기 때문이다.
 
 ## 파이프라인 5단계
 

@@ -175,6 +175,11 @@ class Track:
             lo = getattr(self.prof, 'shrink_lo', None) if self.prof else None
             if lo and src == "prop" and d < lo * dm:
                 return False, "prop_shrink", diag   # 전파 박스 붕괴 = 유령
+            hi = getattr(self.prof, 'prop_grow_hi', 0.0) if self.prof else 0.0
+            if hi and src == "prop" and d > hi * dm:
+                # 전파 창이 인접한 손을 삼켰다. 기각하면 tr.box2d가 갱신되지 않아
+                # 다음 프레임 창이 마지막 정상 박스에 머문다 = 복리 성장이 끊긴다.
+                return False, "prop_grow", diag
             if d > DIAG_UP * dm:             # 회전불변 상한 (축별 게이트는 회전을 오차로 오인)
                 return False, f"diag>{DIAG_UP}x", diag
             # 하한(d < dm/2)은 기각하지 않는다 — 라운드1 실측상 이 조건에 걸리는 프레임은
@@ -339,6 +344,8 @@ class EpisodeTracker:
         self.low_thr = low_thr
         self.fps = fps
         self.fidx = -1
+        self._prev_dist = {}     # grip_follow: 직전 프레임의 방해물(손) 박스
+        self._win = {}           # grip_follow: 검출 공백 동안 이동시킨 전파 창
 
     def _match(self, key, boxes, phrases, scores, WH, K, depth, dscale, dist_boxes=()):
         """후보 중 최적 1개. 배제 기준은 화면 면적비가 아니라 **깊이 정규화 물리 크기**다.
@@ -363,6 +370,12 @@ class EpisodeTracker:
                 if x2 > x1 and y2 > y1:
                     d = depth[y1:y2, x1:x2]
                     d = d[np.isfinite(d) & (d > 0)]
+                    md = self.prof.max_depth
+                    if md and d.size > 20:
+                        # 근거리 20분위로 판정한다. 대상이 화면을 벗어났을 때 배경의
+                        # 비슷한 색 물체로 트랙이 옮겨 붙는 것을 막는다.
+                        if float(np.percentile(d, 20)) * dscale > md:
+                            rej = "too_far"; continue
                     if d.size > 20:
                         z = float(np.median(d)) * dscale
                         pw, ph = phys_width(b, z, K)
@@ -372,6 +385,36 @@ class EpisodeTracker:
             if s + bonus > bs:
                 bs, best = s + bonus, (list(map(float, b)), float(s))
         return best, rej
+
+    def _grip_shift(self, key, ref_box, cur_dist):
+        """잡고 있는 그리퍼의 2D 이동량을 구한다.
+
+        검출이 끊긴 이동 구간에서 전파 창이 집는 지점에 얼어붙으면 로봇팔을 물체로
+        잡게 된다. 매 프레임 검출되는 손 박스의 변위만큼 창을 함께 옮겨 이를 막는다.
+        반환: (dx, dy) 또는 None(잡고 있다고 볼 근거가 없음)
+        """
+        thr = self.prof.grip_follow
+        if not thr or ref_box is None or not cur_dist:
+            return None
+        bx1, by1, bx2, by2 = ref_box
+        barea = max((bx2 - bx1) * (by2 - by1), 1.0)
+        best_k, best_ov = None, 0.0
+        for dk, dbox in cur_dist.items():
+            ix1, iy1 = max(bx1, dbox[0]), max(by1, dbox[1])
+            ix2, iy2 = min(bx2, dbox[2]), min(by2, dbox[3])
+            if ix2 <= ix1 or iy2 <= iy1:
+                continue
+            ov = (ix2 - ix1) * (iy2 - iy1) / barea      # 창이 손에 얼마나 덮였는가
+            if ov > best_ov:
+                best_ov, best_k = ov, dk
+        if best_k is None or best_ov < thr:
+            return None
+        prev = self._prev_dist.get(best_k)
+        if prev is None:
+            return None
+        cur = cur_dist[best_k]
+        return ((cur[0] + cur[2]) / 2 - (prev[0] + prev[2]) / 2,
+                (cur[1] + cur[3]) / 2 - (prev[1] + prev[3]) / 2)
 
     def step(self, img, depth, K, dscale, align_dx=0):
         self.fidx += 1
@@ -414,12 +457,23 @@ class EpisodeTracker:
                     pend[key] = (cand, "redet", cs)
                     missing = [(k, r) for k, r in missing if k != key]
 
+        # 방해물(손) 박스 — grip_follow가 켜진 태스크에서만 쓴다
+        cur_dist = {k: pend[k][0] for k in self.distractor_keys if k in pend}
+
         # 마스크 전파 — confirmed 트랙에만
         for key, _ in list(missing):
             tr = self.tracks[key]
-            if tr.confirmed and tr.box2d is not None:
-                pend[key] = (inflate(tr.box2d, 1.12, W, H), "prop", 0.0)
-                missing = [(k, r) for k, r in missing if k != key]
+            if not (tr.confirmed and tr.box2d is not None):
+                continue
+            base = self._win.get(key) or tr.box2d
+            if self.prof.grip_follow and tr.is_target:
+                sh = self._grip_shift(key, base, cur_dist)
+                if sh is not None:
+                    base = [base[0] + sh[0], base[1] + sh[1],
+                            base[2] + sh[0], base[3] + sh[1]]
+                    self._win[key] = base       # 공백이 이어지는 동안 누적 이동
+            pend[key] = (inflate(base, 1.12, W, H), "prop", 0.0)
+            missing = [(k, r) for k, r in missing if k != key]
 
         if self.prof.exclusive_tracks and len(pend) > 1:
             # 두 target 후보가 사실상 같은 박스를 가리키면 검출 점수가 높은 쪽만 남긴다.
@@ -448,6 +502,8 @@ class EpisodeTracker:
 
         for key in self.targets:
             tr = self.tracks[key]
+            if key in pend and pend[key][1] in ("det", "redet"):
+                self._win.pop(key, None)      # 실관측이 돌아오면 창 이동 누적을 리셋
             if key not in pend:
                 rej = dict(missing).get(key)
                 rec = dict(key=key, label=tr.label, src="none", accepted=False,
@@ -553,7 +609,10 @@ class EpisodeTracker:
                            center_amodal=list(map(float, cBe)), size_amodal=list(map(float, sBe)),
                            accepted_amodal=True, coasting=False, conf=1.0)
             else:
-                cb = tr.coast(np.array(b.center)) if tr.confirmed else None
+                # 전파 창이 붕괴했거나(prop_shrink) 손을 삼킨(prop_grow) 경우 그 중심은
+                # 물체가 아니라 손·유령이다. 방식 B가 그것을 이어받지 않게 한다.
+                bad_win = why.startswith("prop_") or why in ("reproj",) or why.startswith("diag>")
+                cb = tr.coast(None if bad_win else np.array(b.center)) if tr.confirmed else None
                 tr.reject()
                 rec.update(accepted=False, reason=why)
                 if cb is not None:
@@ -562,6 +621,7 @@ class EpisodeTracker:
                                center_amodal=list(map(float, c)), size_amodal=list(map(float, s)),
                                conf=round(float(np.exp(-tr.frames_since_det / 8.0)), 3))
             results.append(rec)
+        self._prev_dist = cur_dist
         return results
 
     def draw(self, vis, results, K, mode="A"):
