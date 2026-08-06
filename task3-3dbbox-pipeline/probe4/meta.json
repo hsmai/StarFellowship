@@ -1,0 +1,152 @@
+{
+ "box_apple_head": {
+  "unit": "brainco/PickApple_ep5/cam_right_high",
+  "frame": 26,
+  "n_video": 220,
+  "boxes": [
+   {
+    "label": "apple",
+    "size_cm": [
+     6.2,
+     5.9,
+     1.7
+    ],
+    "src": "det",
+    "mask_px": 1284,
+    "area_pct": 0.7,
+    "dmed": 0.78
+   },
+   {
+    "label": "plate",
+    "size_cm": [
+     17.2,
+     13.4,
+     6.1
+    ],
+    "src": "det",
+    "mask_px": 9871,
+    "area_pct": 4.5,
+    "dmed": 0.73
+   }
+  ]
+ },
+ "box_apple_wrist": {
+  "unit": "brainco/PickApple_ep5/cam_left_wrist",
+  "frame": 91,
+  "n_video": 220,
+  "boxes": [
+   {
+    "label": "apple",
+    "size_cm": [
+     14.0,
+     14.0,
+     3.3
+    ],
+    "src": "det",
+    "mask_px": 125585,
+    "area_pct": 59.0,
+    "dmed": 0.2
+   }
+  ]
+ },
+ "box_cube_head": {
+  "unit": "brainco/GraspRubiksCube_ep5/cam_right_high",
+  "frame": 198,
+  "n_video": 220,
+  "boxes": [
+   {
+    "label": "rubiks cube",
+    "size_cm": [
+     6.5,
+     6.4,
+     2.5
+    ],
+    "src": "det",
+    "mask_px": 2028,
+    "area_pct": 1.2,
+    "dmed": 0.68
+   },
+   {
+    "label": "plate",
+    "size_cm": [
+     27.5,
+     11.8,
+     10.9
+    ],
+    "src": "det",
+    "mask_px": 26353,
+    "area_pct": 13.2,
+    "dmed": 0.65
+   }
+  ]
+ },
+ "box_cube_wrist": {
+  "unit": "brainco/GraspRubiksCube_ep5/cam_right_wrist",
+  "frame": 187,
+  "n_video": 220,
+  "boxes": [
+   {
+    "label": "rubiks cube",
+    "size_cm": [
+     13.4,
+     16.2,
+     5.3
+    ],
+    "src": "det",
+    "mask_px": 82509,
+    "area_pct": 37.2,
+    "dmed": 0.19
+   }
+  ]
+ },
+ "box_doll_head": {
+  "unit": "brainco/PickDoll_ep5/cam_right_high",
+  "frame": 102,
+  "n_video": 220,
+  "boxes": [
+   {
+    "label": "doll",
+    "size_cm": [
+     29.1,
+     28.0,
+     19.2
+    ],
+    "src": "det",
+    "mask_px": 9861,
+    "area_pct": 7.6,
+    "dmed": 0.92
+   },
+   {
+    "label": "plate",
+    "size_cm": [
+     20.2,
+     16.2,
+     9.7
+    ],
+    "src": "det",
+    "mask_px": 7763,
+    "area_pct": 3.8,
+    "dmed": 0.93
+   }
+  ]
+ },
+ "box_doll_wrist": {
+  "unit": "brainco/PickDoll_ep5/cam_right_wrist",
+  "frame": 131,
+  "n_video": 220,
+  "boxes": [
+   {
+    "label": "doll",
+    "size_cm": [
+     18.9,
+     9.7,
+     7.8
+    ],
+    "src": "det",
+    "mask_px": 108825,
+    "area_pct": 58.4,
+    "dmed": 0.28
+   }
+  ]
+ }
+}
