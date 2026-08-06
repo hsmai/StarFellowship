@@ -1,0 +1,103 @@
+=== 후보 렌더 시작 2026-08-06 13:00:21 node=pleiades1 ===
+Cannot import NystromAttention, you can not run original UniDepth. UniDepthV2 is available.
+Not loading pretrained weights for backbone
+EdgeGuidedLocalSSI reverts to a non cuda-optimized operation, you will experince large slowdown, please install it:  `cd ./unidepth/ops/extract_patches && bash compile.sh`
+모델 로드 완료
+--- brainco/PickApple_ep5/cam_left_wrist / apple (3건)
+  bw_apple_hand f156: 132910px 43.3% comp=2 src=prop
+  bb_apple1 f70: 82893px 27.0% comp=1 src=det
+  bb_apple2 f161: 101224px 33.0% comp=1 src=det
+--- brainco/GraspOreo_ep5/cam_right_wrist / oreo (3건)
+  bw_oreo_hand f178: 62595px 20.4% comp=2 src=prop
+  bb_oreo1 f122: 86254px 28.1% comp=1 src=det
+  bb_oreo2 f93: 56925px 18.5% comp=1 src=det
+--- brainco/PickToothpaste_ep5/cam_right_wrist / toothpaste (3건)
+  bw_tpaste_hand f107: 68857px 22.4% comp=2 src=prop
+  bb_tpaste1 f170: 20304px 6.6% comp=1 src=det
+  bb_tpaste2 f35: 20968px 6.8% comp=1 src=det
+--- brainco/PickDoll_ep5/cam_right_wrist / doll (3건)
+  bw_doll_frag f115: 37369px 12.2% comp=6 src=det
+  bb_doll1 f83: 20608px 6.7% comp=1 src=det
+  bb_doll2 f31: 32113px 10.5% comp=1 src=det
+--- brainco/PickDoll_ep5/cam_left_wrist / doll (1건)
+  bw_doll_prop f163: 29221px 9.5% comp=2 src=prop
+--- brainco/PickDrink_ep5/cam_right_wrist / bottle (1건)
+  bw_drink_45cm f161: 4986px 1.6% comp=1 src=det
+--- he/deformable_ep4838 / towel (4건)
+  hw_towel_frag f92: 22000px 7.2% comp=10 src=det
+  hw_towel_frag2 f89: 23571px 7.7% comp=13 src=det
+  hb_towel1 f7: 81230px 26.4% comp=1 src=det
+  hb_towel2 f34: 80463px 26.2% comp=1 src=det
+--- he/Tool_use_ep8198 / duster (1건)
+  hw_duster_speck f32: 28395px 9.2% comp=229 src=det
+--- he/Precision_ep7918 / rose (3건)
+  hw_rose_vase f156: 47354px 15.4% comp=1 src=det
+  hb_rose1 f86: 9506px 3.1% comp=1 src=det
+  hb_rose2 f165: 9196px 3.0% comp=2 src=det
+--- he/Articulated_ep280 / laptop (3건)
+  hw_laptop_over f36: 91238px 29.7% comp=5 src=det
+  hb_laptop1 f43: 58214px 18.9% comp=1 src=det
+  hb_laptop2 f5: 75340px 24.5% comp=1 src=det
+--- he/Basic_ep3800 / pink toy (3건)
+  hw_toy_part f88: 5086px 1.7% comp=1 src=det
+  hb_toy1 f29: 8547px 2.8% comp=1 src=det
+  hb_toy2 f13: 8607px 2.8% comp=1 src=det
+--- brainco/PickTissues_ep5/cam_left_wrist / tissue pack (1건)
+  bw_tissue_ghost f116: 7502px 2.4% comp=3 src=prop
+--- brainco/GraspRubiksCube_ep5/cam_right_wrist / rubiks cube (2건)
+  bb_cube1 f88: 58919px 19.2% comp=1 src=det
+  bb_cube2 f111: 42430px 13.8% comp=3 src=det
+  depth dp_cube_wrist stable: f160->161 0.24->0.24m (0.0%)
+  depth dp_cube_wrist jump: f195->196 0.18->0.68m (270.1%)
+--- brainco/PickDrink_ep5/cam_left_wrist / bottle (2건)
+  bb_drink1 f3: 37549px 12.2% comp=1 src=det
+  bb_drink2 f191: 113926px 37.1% comp=1 src=det
+--- he/Locomanip_ep7120 / bottle (2건)
+  hb_bottle1 f117: 7932px 2.6% comp=1 src=redet
+  hb_bottle2 f32: 10146px 3.3% comp=1 src=det
+  depth dp_oreo_head stable: f77->78 0.69->0.69m (0.0%)
+  depth dp_oreo_head jump: f23->24 0.72->0.82m (15.2%)
+  depth dp_apple_head stable: f154->155 0.63->0.63m (0.1%)
+  depth dp_apple_head jump: f218->219 0.66->0.77m (16.9%)
+  depth dp_doll_head stable: f195->196 0.84->0.84m (0.0%)
+  depth dp_doll_head jump: f104->105 0.87->0.95m (9.6%)
+완료 -> /home/isangmin/task3/probe6 (sam 35장, depth 8장)
+=== 큰객체 확장 시작 2026-08-06 13:06:25 ===
+final text_encoder_type: bert-base-uncased
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights:  93%|█████████▎| 185/199 [00:00<00:00, 1825.74it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 1847.75it/s]
+[transformers] [1mBertModel LOAD REPORT[0m from: bert-base-uncased
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+[Detector] 로컬 GroundingDINO 실패 -> transformers 폴백: 'BertModel' object has no attribute 'get_head_mask'
+Loading weights:   0%|          | 0/1182 [00:00<?, ?it/s]Loading weights:  70%|██████▉   | 826/1182 [00:00<00:00, 8160.91it/s]Loading weights: 100%|██████████| 1182/1182 [00:00<00:00, 5703.65it/s]
+Cannot import NystromAttention, you can not run original UniDepth. UniDepthV2 is available.
+Not loading pretrained weights for backbone
+EdgeGuidedLocalSSI reverts to a non cuda-optimized operation, you will experince large slowdown, please install it:  `cd ./unidepth/ops/extract_patches && bash compile.sh`
+모델 로드 완료
+  bc_oreo_head [0] plate 0.71 -> [27.2, 20.8, 17.8]
+  bc_oreo_head [1] white table 0.67 -> [129.8, 56.8, 55.6]
+  bc_oreo_head [2] chair 0.64 -> [54.0, 57.3, 41.0]
+  bc_oreo_head [3] chair 0.44 -> [43.2, 64.0, 52.6]
+  bc_doll_head [0] white table 0.75 -> [124.6, 63.4, 53.1]
+  bc_doll_head [1] plate 0.73 -> [19.2, 15.4, 11.2]
+  bc_doll_head [2] chair 0.61 -> [44.6, 28.4, 49.6]
+  he_basic [0] basket 0.70 -> [33.7, 36.5, 41.8]
+  he_basic [1] chair 0.40 -> [13.1, 17.8, 14.4]
+  he_basic [2] table 0.35 -> [248.1, 111.6, 165.5]
+  he_articulated [0] desk 0.58 -> [206.8, 67.6, 140.0]
+  he_articulated [1] laptop 0.48 -> [55.5, 27.8, 36.3]
+  he_articulated [2] floor 0.36 -> [505.6, 247.2, 414.0]
+  he_hri [0] table 0.53 -> [136.3, 48.4, 133.4]
+  he_locomanip [0] table 0.54 -> [78.5, 60.2, 42.9]
+완료 -> /home/isangmin/task3/probe6/bigobj
+=== 종료 2026-08-06 13:08:56 ===

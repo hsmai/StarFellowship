@@ -1,0 +1,597 @@
+{
+ "bw_apple_hand": {
+  "unit": "brainco/PickApple_ep5/cam_left_wrist",
+  "label": "apple",
+  "frame": 156,
+  "bucket": "worst",
+  "mask_px": 132910,
+  "area_pct": 43.3,
+  "components": 2,
+  "src": "prop",
+  "fill": 0.714,
+  "size_cm": [
+   9.4,
+   8.8,
+   2.0
+  ],
+  "det_score": 0.0
+ },
+ "bb_apple1": {
+  "unit": "brainco/PickApple_ep5/cam_left_wrist",
+  "label": "apple",
+  "frame": 70,
+  "bucket": "best",
+  "mask_px": 82893,
+  "area_pct": 27.0,
+  "components": 1,
+  "src": "det",
+  "fill": 0.837,
+  "size_cm": [
+   19.0,
+   11.3,
+   4.1
+  ],
+  "det_score": 0.879
+ },
+ "bb_apple2": {
+  "unit": "brainco/PickApple_ep5/cam_left_wrist",
+  "label": "apple",
+  "frame": 161,
+  "bucket": "best",
+  "mask_px": 101224,
+  "area_pct": 33.0,
+  "components": 1,
+  "src": "det",
+  "fill": 0.831,
+  "size_cm": [
+   10.7,
+   5.8,
+   2.2
+  ],
+  "det_score": 0.798
+ },
+ "bw_oreo_hand": {
+  "unit": "brainco/GraspOreo_ep5/cam_right_wrist",
+  "label": "oreo",
+  "frame": 178,
+  "bucket": "worst",
+  "mask_px": 62595,
+  "area_pct": 20.4,
+  "components": 2,
+  "src": "prop",
+  "fill": 0.41,
+  "size_cm": [
+   22.3,
+   13.0,
+   6.5
+  ],
+  "det_score": 0.0
+ },
+ "bb_oreo1": {
+  "unit": "brainco/GraspOreo_ep5/cam_right_wrist",
+  "label": "oreo",
+  "frame": 122,
+  "bucket": "best",
+  "mask_px": 86254,
+  "area_pct": 28.1,
+  "components": 1,
+  "src": "det",
+  "fill": 0.713,
+  "size_cm": [
+   22.2,
+   16.2,
+   3.6
+  ],
+  "det_score": 0.669
+ },
+ "bb_oreo2": {
+  "unit": "brainco/GraspOreo_ep5/cam_right_wrist",
+  "label": "oreo",
+  "frame": 93,
+  "bucket": "best",
+  "mask_px": 56925,
+  "area_pct": 18.5,
+  "components": 1,
+  "src": "det",
+  "fill": 0.688,
+  "size_cm": [
+   16.1,
+   8.3,
+   2.2
+  ],
+  "det_score": 0.551
+ },
+ "bw_tpaste_hand": {
+  "unit": "brainco/PickToothpaste_ep5/cam_right_wrist",
+  "label": "toothpaste",
+  "frame": 107,
+  "bucket": "worst",
+  "mask_px": 68857,
+  "area_pct": 22.4,
+  "components": 2,
+  "src": "prop",
+  "fill": 0.503,
+  "size_cm": [
+   19.9,
+   12.8,
+   9.8
+  ],
+  "det_score": 0.0
+ },
+ "bb_tpaste1": {
+  "unit": "brainco/PickToothpaste_ep5/cam_right_wrist",
+  "label": "toothpaste",
+  "frame": 170,
+  "bucket": "best",
+  "mask_px": 20304,
+  "area_pct": 6.6,
+  "components": 1,
+  "src": "det",
+  "fill": 0.786,
+  "size_cm": [
+   10.5,
+   16.7,
+   9.9
+  ],
+  "det_score": 0.378
+ },
+ "bb_tpaste2": {
+  "unit": "brainco/PickToothpaste_ep5/cam_right_wrist",
+  "label": "toothpaste",
+  "frame": 35,
+  "bucket": "best",
+  "mask_px": 20968,
+  "area_pct": 6.8,
+  "components": 1,
+  "src": "det",
+  "fill": 0.779,
+  "size_cm": [
+   23.5,
+   7.9,
+   10.1
+  ],
+  "det_score": 0.437
+ },
+ "bw_doll_frag": {
+  "unit": "brainco/PickDoll_ep5/cam_right_wrist",
+  "label": "doll",
+  "frame": 115,
+  "bucket": "worst",
+  "mask_px": 37369,
+  "area_pct": 12.2,
+  "components": 6,
+  "src": "det",
+  "fill": 0.148,
+  "size_cm": [
+   29.9,
+   29.6,
+   20.1
+  ],
+  "det_score": 0.609
+ },
+ "bb_doll1": {
+  "unit": "brainco/PickDoll_ep5/cam_right_wrist",
+  "label": "doll",
+  "frame": 83,
+  "bucket": "best",
+  "mask_px": 20608,
+  "area_pct": 6.7,
+  "components": 1,
+  "src": "det",
+  "fill": 0.804,
+  "size_cm": [
+   34.1,
+   48.2,
+   18.3
+  ],
+  "det_score": 0.482
+ },
+ "bb_doll2": {
+  "unit": "brainco/PickDoll_ep5/cam_right_wrist",
+  "label": "doll",
+  "frame": 31,
+  "bucket": "best",
+  "mask_px": 32113,
+  "area_pct": 10.5,
+  "components": 1,
+  "src": "det",
+  "fill": 0.746,
+  "size_cm": [
+   36.6,
+   57.2,
+   19.7
+  ],
+  "det_score": 0.509
+ },
+ "bw_doll_prop": {
+  "unit": "brainco/PickDoll_ep5/cam_left_wrist",
+  "label": "doll",
+  "frame": 163,
+  "bucket": "worst",
+  "mask_px": 29221,
+  "area_pct": 9.5,
+  "components": 2,
+  "src": "prop",
+  "fill": 0.293,
+  "size_cm": [
+   40.8,
+   17.6,
+   24.8
+  ],
+  "det_score": 0.0
+ },
+ "bw_drink_45cm": {
+  "unit": "brainco/PickDrink_ep5/cam_right_wrist",
+  "label": "bottle",
+  "frame": 161,
+  "bucket": "worst",
+  "mask_px": 4986,
+  "area_pct": 1.6,
+  "components": 1,
+  "src": "det",
+  "fill": 0.63,
+  "size_cm": [
+   22.0,
+   19.5,
+   45.0
+  ],
+  "det_score": 0.448
+ },
+ "hw_towel_frag": {
+  "unit": "he/deformable_ep4838",
+  "label": "towel",
+  "frame": 92,
+  "bucket": "worst",
+  "mask_px": 22000,
+  "area_pct": 7.2,
+  "components": 10,
+  "src": "det",
+  "fill": 0.069,
+  "size_cm": [
+   24.7,
+   10.4,
+   14.9
+  ],
+  "det_score": 0.376
+ },
+ "hw_towel_frag2": {
+  "unit": "he/deformable_ep4838",
+  "label": "towel",
+  "frame": 89,
+  "bucket": "worst",
+  "mask_px": 23571,
+  "area_pct": 7.7,
+  "components": 13,
+  "src": "det",
+  "fill": 0.117,
+  "size_cm": [
+   27.5,
+   14.0,
+   20.2
+  ],
+  "det_score": 0.418
+ },
+ "hb_towel1": {
+  "unit": "he/deformable_ep4838",
+  "label": "towel",
+  "frame": 7,
+  "bucket": "best",
+  "mask_px": 81230,
+  "area_pct": 26.4,
+  "components": 1,
+  "src": "det",
+  "fill": 0.764,
+  "size_cm": [
+   61.4,
+   25.8,
+   22.1
+  ],
+  "det_score": 0.641
+ },
+ "hb_towel2": {
+  "unit": "he/deformable_ep4838",
+  "label": "towel",
+  "frame": 34,
+  "bucket": "best",
+  "mask_px": 80463,
+  "area_pct": 26.2,
+  "components": 1,
+  "src": "det",
+  "fill": 0.76,
+  "size_cm": [
+   58.3,
+   26.2,
+   22.1
+  ],
+  "det_score": 0.611
+ },
+ "hw_duster_speck": {
+  "unit": "he/Tool_use_ep8198",
+  "label": "duster",
+  "frame": 32,
+  "bucket": "worst",
+  "mask_px": 28395,
+  "area_pct": 9.2,
+  "components": 229,
+  "src": "det",
+  "fill": 0.136,
+  "size_cm": [
+   33.2,
+   14.2,
+   10.8
+  ],
+  "det_score": 0.379
+ },
+ "hw_rose_vase": {
+  "unit": "he/Precision_ep7918",
+  "label": "rose",
+  "frame": 156,
+  "bucket": "worst",
+  "mask_px": 47354,
+  "area_pct": 15.4,
+  "components": 1,
+  "src": "det",
+  "fill": 0.597,
+  "size_cm": [
+   17.3,
+   22.0,
+   32.2
+  ],
+  "det_score": 0.37
+ },
+ "hb_rose1": {
+  "unit": "he/Precision_ep7918",
+  "label": "rose",
+  "frame": 86,
+  "bucket": "best",
+  "mask_px": 9506,
+  "area_pct": 3.1,
+  "components": 1,
+  "src": "det",
+  "fill": 0.745,
+  "size_cm": [
+   8.9,
+   6.0,
+   2.9
+  ],
+  "det_score": 0.518
+ },
+ "hb_rose2": {
+  "unit": "he/Precision_ep7918",
+  "label": "rose",
+  "frame": 165,
+  "bucket": "best",
+  "mask_px": 9196,
+  "area_pct": 3.0,
+  "components": 2,
+  "src": "det",
+  "fill": 0.7,
+  "size_cm": [
+   12.0,
+   14.4,
+   19.2
+  ],
+  "det_score": 0.366
+ },
+ "hw_laptop_over": {
+  "unit": "he/Articulated_ep280",
+  "label": "laptop",
+  "frame": 36,
+  "bucket": "worst",
+  "mask_px": 91238,
+  "area_pct": 29.7,
+  "components": 5,
+  "src": "det",
+  "fill": 0.499,
+  "size_cm": [
+   45.1,
+   31.6,
+   30.5
+  ],
+  "det_score": 0.391
+ },
+ "hb_laptop1": {
+  "unit": "he/Articulated_ep280",
+  "label": "laptop",
+  "frame": 43,
+  "bucket": "best",
+  "mask_px": 58214,
+  "area_pct": 18.9,
+  "components": 1,
+  "src": "det",
+  "fill": 0.761,
+  "size_cm": [
+   47.8,
+   17.4,
+   30.1
+  ],
+  "det_score": 0.514
+ },
+ "hb_laptop2": {
+  "unit": "he/Articulated_ep280",
+  "label": "laptop",
+  "frame": 5,
+  "bucket": "best",
+  "mask_px": 75340,
+  "area_pct": 24.5,
+  "components": 1,
+  "src": "det",
+  "fill": 0.759,
+  "size_cm": [
+   46.7,
+   22.8,
+   24.1
+  ],
+  "det_score": 0.41
+ },
+ "hw_toy_part": {
+  "unit": "he/Basic_ep3800",
+  "label": "pink toy",
+  "frame": 88,
+  "bucket": "worst",
+  "mask_px": 5086,
+  "area_pct": 1.7,
+  "components": 1,
+  "src": "det",
+  "fill": 0.33,
+  "size_cm": [
+   7.5,
+   7.5,
+   3.5
+  ],
+  "det_score": 0.489
+ },
+ "hb_toy1": {
+  "unit": "he/Basic_ep3800",
+  "label": "pink toy",
+  "frame": 29,
+  "bucket": "best",
+  "mask_px": 8547,
+  "area_pct": 2.8,
+  "components": 1,
+  "src": "det",
+  "fill": 0.685,
+  "size_cm": [
+   12.8,
+   9.5,
+   8.0
+  ],
+  "det_score": 0.651
+ },
+ "hb_toy2": {
+  "unit": "he/Basic_ep3800",
+  "label": "pink toy",
+  "frame": 13,
+  "bucket": "best",
+  "mask_px": 8607,
+  "area_pct": 2.8,
+  "components": 1,
+  "src": "det",
+  "fill": 0.671,
+  "size_cm": [
+   12.6,
+   7.8,
+   5.8
+  ],
+  "det_score": 0.655
+ },
+ "bw_tissue_ghost": {
+  "unit": "brainco/PickTissues_ep5/cam_left_wrist",
+  "label": "tissue pack",
+  "frame": 116,
+  "bucket": "worst",
+  "mask_px": 7502,
+  "area_pct": 2.4,
+  "components": 3,
+  "src": "prop",
+  "fill": 0.578,
+  "size_cm": [
+   5.8,
+   5.4,
+   6.0
+  ],
+  "det_score": 0.0
+ },
+ "bb_cube1": {
+  "unit": "brainco/GraspRubiksCube_ep5/cam_right_wrist",
+  "label": "rubiks cube",
+  "frame": 88,
+  "bucket": "best",
+  "mask_px": 58919,
+  "area_pct": 19.2,
+  "components": 1,
+  "src": "det",
+  "fill": 0.806,
+  "size_cm": [
+   11.7,
+   4.3,
+   3.7
+  ],
+  "det_score": 0.48
+ },
+ "bb_cube2": {
+  "unit": "brainco/GraspRubiksCube_ep5/cam_right_wrist",
+  "label": "rubiks cube",
+  "frame": 111,
+  "bucket": "best",
+  "mask_px": 42430,
+  "area_pct": 13.8,
+  "components": 3,
+  "src": "det",
+  "fill": 0.801,
+  "size_cm": [
+   11.4,
+   7.5,
+   5.9
+  ],
+  "det_score": 0.494
+ },
+ "bb_drink1": {
+  "unit": "brainco/PickDrink_ep5/cam_left_wrist",
+  "label": "bottle",
+  "frame": 3,
+  "bucket": "best",
+  "mask_px": 37549,
+  "area_pct": 12.2,
+  "components": 1,
+  "src": "det",
+  "fill": 0.747,
+  "size_cm": [
+   31.7,
+   15.1,
+   8.3
+  ],
+  "det_score": 0.499
+ },
+ "bb_drink2": {
+  "unit": "brainco/PickDrink_ep5/cam_left_wrist",
+  "label": "bottle",
+  "frame": 191,
+  "bucket": "best",
+  "mask_px": 113926,
+  "area_pct": 37.1,
+  "components": 1,
+  "src": "det",
+  "fill": 0.699,
+  "size_cm": [
+   32.3,
+   14.8,
+   7.8
+  ],
+  "det_score": 0.584
+ },
+ "hb_bottle1": {
+  "unit": "he/Locomanip_ep7120",
+  "label": "bottle",
+  "frame": 117,
+  "bucket": "best",
+  "mask_px": 7932,
+  "area_pct": 2.6,
+  "components": 1,
+  "src": "redet",
+  "fill": 0.711,
+  "size_cm": [
+   16.9,
+   11.1,
+   11.6
+  ],
+  "det_score": 0.317
+ },
+ "hb_bottle2": {
+  "unit": "he/Locomanip_ep7120",
+  "label": "bottle",
+  "frame": 32,
+  "bucket": "best",
+  "mask_px": 10146,
+  "area_pct": 3.3,
+  "components": 1,
+  "src": "det",
+  "fill": 0.695,
+  "size_cm": [
+   11.1,
+   22.1,
+   17.7
+  ],
+  "det_score": 0.641
+ }
+}

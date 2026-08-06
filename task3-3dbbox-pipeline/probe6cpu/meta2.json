@@ -1,0 +1,142 @@
+{
+ "gd_best_bottle_he": {
+  "unit": "he/Locomanip_ep7120",
+  "frame": 61,
+  "label": "bottle",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    10.1,
+    14.3,
+    17.3
+   ],
+   "det_score": 0.558
+  }
+ },
+ "gd_best_towel_he": {
+  "unit": "he/deformable_ep4838",
+  "frame": 62,
+  "label": "towel",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    61.7,
+    26.9,
+    22.8
+   ],
+   "det_score": 0.534
+  }
+ },
+ "gd_best_duster_he": {
+  "unit": "he/Tool_use_ep8198",
+  "frame": 38,
+  "label": "duster",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    34.1,
+    14.4,
+    11.0
+   ],
+   "det_score": 0.426
+  }
+ },
+ "gd_best_rose_he": {
+  "unit": "he/HRI_ep5598",
+  "frame": 82,
+  "label": "rose",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    7.7,
+    7.0,
+    2.6
+   ],
+   "det_score": 0.35
+  }
+ },
+ "bp_best_rose_he": {
+  "unit": "he/HRI_ep5598",
+  "frame": 82,
+  "label": "rose",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    7.7,
+    7.0,
+    2.6
+   ],
+   "det_score": 0.35
+  }
+ },
+ "bp_best_duster_he": {
+  "unit": "he/Tool_use_ep8198",
+  "frame": 38,
+  "label": "duster",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    34.1,
+    14.4,
+    11.0
+   ],
+   "det_score": 0.426
+  }
+ },
+ "bp_worst_towel_max": {
+  "unit": "he/deformable_ep4838",
+  "frame": 82,
+  "label": "towel",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    50.5,
+    46.7,
+    38.8
+   ],
+   "det_score": 0.469
+  }
+ },
+ "bp_worst_duster_he": {
+  "unit": "he/Tool_use_ep8198",
+  "frame": 98,
+  "label": "duster",
+  "rec": {
+   "src": "redet",
+   "size_cm": [
+    52.4,
+    9.4,
+    10.0
+   ],
+   "det_score": 0.288
+  }
+ },
+ "bp_worst_rose_hri": {
+  "unit": "he/HRI_ep5598",
+  "frame": 130,
+  "label": "rose",
+  "rec": {
+   "src": "redet",
+   "size_cm": [
+    33.0,
+    12.5,
+    10.0
+   ],
+   "det_score": 0.539
+  }
+ },
+ "bp_worst_oreo_wrist": {
+  "unit": "brainco/GraspOreo_ep5/cam_right_wrist",
+  "frame": 111,
+  "label": "oreo",
+  "rec": {
+   "src": "det",
+   "size_cm": [
+    27.0,
+    13.3,
+    3.5
+   ],
+   "det_score": 0.484
+  }
+ }
+}
