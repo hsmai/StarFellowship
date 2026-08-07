@@ -5,7 +5,46 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 
 ![파이프라인](docs/assets/pipeline_overview.png)
 
-## 무엇을 하는가
+## 레포 구조 — 한눈에
+
+```
+task3-3dbbox-pipeline/
+├── pipeline/   5단계 파이프라인 뼈대 코드 (이전 task에서 구축)
+├── results/    파이프라인 최종 실행 결과 — 15태스크 39유닛 통계·이미지
+├── tasks/      신규 task 8종 — task별 코드 + 육안 검증 통과 결과물
+├── docs/       보고서(docx 2편)·설계 문서
+└── README.md   (이 문서)
+```
+
+| 폴더 | 무엇이 있나 |
+|---|---|
+| [`pipeline/`](pipeline/) | 5단계 구현 본체. `track3d.py`(추적·게이트), `geometry.py`(역투영·3D박스), `models_wrap.py`(모델 래퍼), `postprocess.py`(2D박스 출력·ghost 트리밍), 러너 2종 |
+| [`results/`](results/) | `최종결과/`(검증 39유닛) + `최종결과_ghost트리밍/`(유령 박스 제거 후처리 적용본). 영상은 용량 문제로 드라이브 공유, 저장소엔 통계·이미지 |
+| [`tasks/`](tasks/) | 아래 신규 task 8종. **각 폴더의 README부터 읽으면 된다** |
+| [`docs/`](docs/) | 구축 보고서·신규task 진행 보고서(docx), 설계·설정·개선이력 문서 |
+
+## 신규 task 8종 (2026-08)
+
+각 폴더에 문제상황 → 방법 → 결과를 담은 README와 산출물이 있다.
+샘플 이미지는 전부 **육안 검증을 통과한 것만** 남겼다(후보 ~100장 전량 렌더 후 판정).
+
+| # | task | 상태 | 폴더 |
+|---|---|---|---|
+| ① | 2D bounding box 출력 | ✅ 완료 | [`tasks/1_2D박스출력/`](tasks/1_2D박스출력/) |
+| ② | 각 모듈 최신 모델 교체 | ⏸ 대기 (조사 완료) | [`tasks/2_모델교체_조사/`](tasks/2_모델교체_조사/) |
+| ③ | 데이터셋 정보 분리·입력 대체 검토 | 🔶 진행 중 | [`tasks/3_데이터셋정보_분리/`](tasks/3_데이터셋정보_분리/) |
+| ④ | 큰 객체(table 등) 검출 + VLM 프롬프트 | 🔶 진행 중 | [`tasks/4_큰객체/`](tasks/4_큰객체/) |
+| ⑤ | Gripper/Hand Segmentation | ✅ 완료 | [`tasks/5_그리퍼분할/`](tasks/5_그리퍼분할/) |
+| ⑥ | 모듈별 베스트/워스트 사례 | ✅ 완료 | [`tasks/6_모듈별_베스트워스트/`](tasks/6_모듈별_베스트워스트/) |
+| ⑦ | Ghost(유령 박스) 현상 해결 | 🔶 진행 중 | [`tasks/7_ghost개선/`](tasks/7_ghost개선/) |
+| ⑧ | HE G1/H1 로봇별 차이 | ✅ 완료 | [`tasks/8_G1_H1비교/`](tasks/8_G1_H1비교/) |
+
+공용 실험 도구(소형 실험·정지컷 추출·샘플 렌더)는 [`tasks/도구/`](tasks/도구/)에 있다.
+진행 경과 보고서: [Task3_신규task_진행보고.docx](docs/Task3_신규task_진행보고.docx)
+
+---
+
+## 파이프라인 — 무엇을 하는가
 
 입력은 로봇이 촬영한 RGB 영상이고, 출력은 **프레임마다 대상 물체를 감싸는 3D 박스**다.
 사람이 라벨을 달지 않아도 텍스트 프롬프트("oreo snack package")만으로 동작한다.
@@ -13,16 +52,16 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 | 대상 데이터셋 | 규모 | 특징 |
 |---|---|---|
 | **G1 Brainco** | 8 태스크 / 1,598 에피소드 | 카메라 4대(머리 좌우 + 손목 좌우), depth 없음 → **추정** |
-| **Humanoid Everyday** | 246 태스크 / 4,064 에피소드(g1) | 카메라 1대(1인칭), **실측 depth** 있음 |
+| **Humanoid Everyday(HE)** | 246 태스크 / 4,064 에피소드(g1) | 카메라 1대(1인칭), **실측 depth** 있음 |
 
 ## 어떻게 동작하는가
 
-위 그림의 5단계를 그대로 구현했다. 각 단계의 구현 선택은 다음과 같다.
+위 그림의 5단계를 그대로 구현했다.
 
 | 단계 | 모듈 | 구현 |
 |---|---|---|
 | 1 | GroundingDINO | 텍스트 → 2D 박스. 저임계 단일 패스 후 트래커가 강·약 판정 |
-| 2 | SAM 2.1 | 박스 → 마스크. 검출 실패 시 직전 관측 위치에서 전파 |
+| 2 | SAM 2.1 | 박스 → 픽셀 마스크. 검출 실패 시 직전 관측 위치에서 전파 |
 | 3 | UniDepthV2 / 실측 depth | Brainco는 추정(내부 파라미터도 함께 산출), HE는 parquet 실측값 |
 | 4 | Back-projection | 마스크 + depth + 내부 파라미터 → 객체별 점군 |
 | 5 | 3D Box | 점군 → axis-aligned 박스 |
@@ -56,8 +95,8 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 ## 검증 결과
 
 두 데이터셋의 **모든 종류의 태스크 15종을 전부** 검증했다.
-검증 단위는 39개다 — Brainco 8태스크 × 4카메라(32) + HE 7카테고리 × 1카메라(7),
-각 태스크당 에피소드 1개.
+검증 단위는 39개 — Brainco 8태스크 × 4카메라(32) + HE 7카테고리 × 1카메라(7).
+결과 파일: [`results/`](results/)
 
 아래 표는 **머리 카메라 기준**이다(Brainco는 좌·우 중 좋은 쪽).
 
@@ -86,15 +125,14 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 > 시드값이 그대로 남을 수 있어, 위 표에는 **실검출 프레임의 관측값 중앙값**을 적었다.
 > 시드가 섞인 `size_median`을 정확도 근거로 인용하면 안 된다.
 
-충전기·치약처럼 **작은 물체가 옮겨지는 구간에서는 검출이 끊기는 현상**이 발생한다.
+알려진 한계 (관련 task에서 개선 진행 중):
+- 작은 물체(충전기·치약)가 **옮겨지는 구간에서 검출이 끊긴다** → task ②(SAM 3 교체)
+- 검출률과 별개로 **높이(깊이 축)가 과대/과소**되는 경우가 있다(단일 시점 한계) → task ③
+- 손목 카메라는 물체가 화면을 채우거나 시야에 없어 39유닛 중 4개는 방식 A 0% —
+  상세는 [generalization.md](docs/generalization.md)
 
-해당 현상이 발견되는 task는 Brainco(charger, toothpaste) | Humanoid Everyday(Basic : pinktoy) 이며, 현재 개선 진행중이다.
-
-**손목 카메라는 별개다.** 물체가 화면을 가득 채우거나(인형·티슈) 조작에 관여하지 않는
-손이라 시야에 아예 없는 경우가 있어, 39유닛 중 4개는 방식 A 검출률이 0%다.
-자세한 내용은 [generalization.md](docs/generalization.md)를 참조.
-
-> 다음 단계: 태스크당 3~5 에피소드로 확대해 **에피소드 간 편차**를 확인한다(robustness 검증).
+> 다음 단계: 태스크당 3~5 에피소드로 확대해 **에피소드 간 편차**를 확인한다
+> (robustness 검증 — [robustness-pending.md](docs/robustness-pending.md)).
 
 ## 실행
 
@@ -117,19 +155,21 @@ RoboBrain의 Pseudo-3D Object Annotation Pipeline을 Unitree G1 데이터셋 2�
 bash pipeline/setup_env.sh
 
 # 15개 대표 검증. KIND=bc|he|all, RND=산출 폴더명
-qsub -q pleiades1 -v KIND=all,RND=r7 pipeline/pbs_review.sh
+qsub -q pleiades1 -v KIND=all,RND=out1 pipeline/pbs_review.sh
 
-# robustness — 모든 태스크를 태스크당 n개 에피소드로. 인자는 산출 폴더명
+# 후처리 — 2D 박스 산출물 / ghost 꼬리 트리밍 (CPU만 사용)
+python pipeline/postprocess.py box2d <산출폴더>
+python pipeline/postprocess.py ghosttrim <산출폴더>
+
+# robustness — 모든 태스크를 태스크당 n개 에피소드로
 BC_PER_TASK=5 HE_PER_TASK=3 python pipeline/run_robust.py rb1
 ```
 
 ### 처리량 조정
 
-지금은 러너가 값을 직접 읽는다 — `run_review.py` 상단 상수(`STRIDE`, `BC_MAX_FRAMES`)와
-`run_robust.py`의 환경변수(`BC_PER_TASK`, `HE_PER_TASK`, `FPS`, `CAMS`)다.
-
-`pipeline/config.py`는 **프리셋 정의와 소요 시간 추정 전용**이며 러너와 아직 배선되지 않았다
-(`python pipeline/config.py`로 아래 표를 계산한다).
+러너가 값을 직접 읽는다 — `run_review.py` 상단 상수(`STRIDE`, `BC_MAX_FRAMES`)와
+`run_robust.py`의 환경변수(`BC_PER_TASK`, `HE_PER_TASK`, `FPS`, `CAMS`).
+`pipeline/config.py`는 프리셋 정의와 소요 시간 추정 전용(`python pipeline/config.py`).
 
 | 프리셋 | fps | 카메라 | 에피소드 | 예상(GPU 2장) |
 |---|---|---|---|---|
@@ -138,8 +178,7 @@ BC_PER_TASK=5 HE_PER_TASK=3 python pipeline/run_robust.py rb1
 | `balanced` | 6 | 머리 2대 | 전수 | 78h |
 | `full` | 6 | 4대 | 전수 | 137h |
 
-**GPU는 PBS batch job으로만 사용한다**(연구실 정책). 자세한 값과 정책은
-[settings.md](docs/settings.md) 참조.
+**GPU는 PBS batch job으로만 사용한다**(연구실 정책). 상세: [settings.md](docs/settings.md)
 
 ## 코드 구성
 
@@ -151,10 +190,14 @@ pipeline/
 ├── models_wrap.py   GroundingDINO / SAM 2.1 / UniDepthV2 래퍼 (1~3단계)
 ├── spec.py          태스크별 검출 프롬프트와 대상 물체
 ├── profiles.py      태스크별 처리 설정
-├── config.py        실행 설정 (fps · 카메라 · 샘플 수 · 산출물)
+├── config.py        실행 프리셋 정의·소요 시간 추정
 ├── run_review.py    15개 대표 검증 러너
 ├── run_robust.py    robustness 검증 러너
+├── postprocess.py   후처리 — 2D 박스 산출물 · ghost 꼬리 트리밍 (task ①⑦)
 └── pbs_review.sh    PBS job 스크립트
+
+tasks/도구/          신규 task용 실험·샘플 추출 스크립트 (해당 README 참조)
+tasks/4_큰객체/bigobj2.py, tasks/6_.../render_candidates.py 등 task 전용 코드는 각 폴더에
 ```
 
 ### 왜 태스크별 설정이 필요한가
@@ -169,30 +212,21 @@ pipeline/
 
 | 문서 | 내용 |
 |---|---|
+| [구축 보고서 (docx)](docs/Task3_3DBBox_파이프라인_구축보고.docx) | 파이프라인 구축 보고 |
+| [신규 task 진행 보고 (docx)](docs/Task3_신규task_진행보고.docx) | 신규 task 8종 진행 보고 (완료/진행중/대기) |
 | [pipeline-design.md](docs/pipeline-design.md) | 설계 상세 — 각 단계의 구현 선택과 근거 |
 | [settings.md](docs/settings.md) | 실행 파라미터, 태스크별 프로파일, GPU 정책 |
 | [generalization.md](docs/generalization.md) | 전 데이터 적용 전략과 품질 확인 체계 |
 | [improvement-log.md](docs/improvement-log.md) | 개선 이력 — 무엇이 왜 잘못됐고 어떻게 고쳤는가 |
-| [구축 보고서 (docx)](docs/Task3_3DBBox_파이프라인_구축보고.docx) | 보고용 요약 |
+| [robustness-pending.md](docs/robustness-pending.md) | robustness 검증 계획 (대기 중) |
 
 ## 알려진 데이터 특성
 
 | 항목 | 내용 |
 |---|---|
 | **PickDrink 라벨 오류** | 지시문은 "red cup"이지만 실물은 파란 뚜껑 물병. **지시문을 그대로 믿으면 안 된다** |
-| HE 로봇 혼재 | g1 4,064 + h1 4,885 에피소드. 본 과제는 G1이므로 g1만 사용 |
+| HE 로봇 혼재 | g1 4,064 + h1 4,885 에피소드. 본 과제는 G1이므로 g1만 사용 (H1 검증은 task ⑧) |
 | HE 대상 물체 위치 | 태스크명이 아니라 **description에 명시**되어 있다 |
 | HE RGB-depth 정렬 | depth가 RGB 대비 약 20px 어긋나 있어 보정한다 |
 | HE 내부 파라미터 | 메타에 없어 화각 70° 가정 — 3D 크기가 상수배로 어긋날 수 있다 |
 | depth 정확도 | UniDepthV2는 근접(0.3~0.8m)에서 오차 43%, 중거리(1~3m)에서 21.7% |
-
-## 산출물
-
-검증 영상은 용량 때문에 저장소에 넣지 않고 구글 드라이브로 공유한다.
-저장소에는 태스크별 통계(`stats.json`)와 비교 이미지만 남긴다.
-
-```
-review/r6/
-├── brainco/<태스크>_ep5/<카메라>/  stats.json · AB_compare.png
-└── he/<카테고리>_ep<N>/            stats.json · AB_compare.png
-```
